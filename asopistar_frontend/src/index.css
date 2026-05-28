@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #0d9488;
+  --color-primary-dark: #0f766e;
+  --color-sidebar: #1a2332;
+}
+
+/* Accesibilidad */
+body.large-text {
+  font-size: 20px;
+}
+
+body.high-contrast {
+  filter: contrast(150%);
+}
+
+body.alt-font {
+  font-family: Arial, sans-serif;
+  letter-spacing: 0.05em;
+}
