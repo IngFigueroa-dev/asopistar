@@ -34,52 +34,87 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
 
-                // ── Infraestructura ──────────────────────────────────────
-                // Preflight CORS
+                // ── Infraestructura ──────────────────────────────────────────
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Endpoint de error interno de Spring — DEBE ser público
-                // para que los errores lleguen bien al GlobalExceptionHandler
                 .requestMatchers("/error").permitAll()
 
-                // ── Público ──────────────────────────────────────────────
+                // ── Público ──────────────────────────────────────────────────
                 .requestMatchers("/auth/**").permitAll()
 
-                // ── ADMIN ────────────────────────────────────────────────
+                // ── ADMIN ────────────────────────────────────────────────────
                 .requestMatchers("/roles/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/usuarios/**").hasAuthority("ROLE_ADMIN")
 
-                // ── BIÓLOGO ──────────────────────────────────────────────
+                // ── PRODUCTORES Y ESTANQUES ──────────────────────────────────
+                // Lectura para varios roles
+                .requestMatchers(HttpMethod.GET, "/productores/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA",
+                        "ROLE_BIOLOGO", "ROLE_GERENTE_COMERCIAL", "ROLE_CONTADORA")
+                .requestMatchers(HttpMethod.POST, "/productores/**")
+                    .hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/productores/**")
+                    .hasAnyAuthority("ROLE_ADMIN")
+
+                // ── BIÓLOGO ──────────────────────────────────────────────────
                 .requestMatchers(HttpMethod.POST, "/seguimientos/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO")
                 .requestMatchers(HttpMethod.GET, "/siembras/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO",
                         "ROLE_GERENTE_PLANTA", "ROLE_GERENTE_COMERCIAL")
+                .requestMatchers("/estanques/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO", "ROLE_GERENTE_PLANTA")
+                .requestMatchers("/especies/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO", "ROLE_GERENTE_PLANTA")
 
-                // ── GERENTE_PLANTA ───────────────────────────────────────
+                // ── GERENTE_PLANTA ───────────────────────────────────────────
                 .requestMatchers("/recepciones/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
                 .requestMatchers("/turnos-pesca/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
-                .requestMatchers("/lotes-cuarto-frio/**")
-                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
                 .requestMatchers("/procesamientos/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
+                .requestMatchers("/lotes-cuarto-frio/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
 
-                // ── GERENTE_COMERCIAL ────────────────────────────────────
-                .requestMatchers("/envios/**")
+                // ── CLIENTES Y PUNTOS DE VENTA ───────────────────────────────
+                // GET: accesible por Gerente Planta (para seleccionar al despachar),
+                //      Gerente Comercial y Admin
+                .requestMatchers(HttpMethod.GET, "/clientes/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL",
+                        "ROLE_GERENTE_PLANTA")
+                .requestMatchers(HttpMethod.GET, "/puntos-venta/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL",
+                        "ROLE_GERENTE_PLANTA")
+                // Escritura solo para Gerente Comercial y Admin
+                .requestMatchers(HttpMethod.POST, "/clientes/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL")
-                .requestMatchers("/clientes/**")
+                .requestMatchers(HttpMethod.PUT, "/clientes/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL")
-                .requestMatchers("/puntos-venta/**")
+                .requestMatchers(HttpMethod.POST, "/puntos-venta/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL")
+                .requestMatchers(HttpMethod.PUT, "/puntos-venta/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL")
 
-                // ── CONTADORA ────────────────────────────────────────────
+                // ── ENVÍOS (Logística) ───────────────────────────────────────
+                // GET: Gerente Planta ve sus envíos desde Almacenamiento
+                .requestMatchers(HttpMethod.GET, "/envios/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL",
+                        "ROLE_GERENTE_PLANTA")
+                // POST / PATCH: solo Gerente Comercial y Admin
+                .requestMatchers(HttpMethod.POST, "/envios/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL",
+                        "ROLE_GERENTE_PLANTA")
+                .requestMatchers(HttpMethod.PATCH, "/envios/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL",
+                        "ROLE_GERENTE_PLANTA")
+
+                // ── CONTADORA ────────────────────────────────────────────────
                 .requestMatchers("/pagos-productor/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_CONTADORA")
                 .requestMatchers("/ingresos/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_CONTADORA")
 
-                // ── ENCARGADO_INSUMOS ────────────────────────────────────
+                // ── ENCARGADO_INSUMOS ────────────────────────────────────────
                 .requestMatchers("/insumos/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_ENCARGADO_INSUMOS")
                 .requestMatchers("/ventas-insumo/**")

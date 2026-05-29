@@ -414,3 +414,73 @@ WHERE estado = false AND estado_decision = 'PENDIENTE_DECISION';
 SELECT id_lote, codigo_lote, kilos, estado, estado_decision
 FROM negocio.lote_cuarto_frio
 ORDER BY id_lote;
+
+
+---- MODELO PARA CONECTAR ALMACENAMIENTO CON LOGISTICA -------------
+
+
+-- ============================================================
+-- MIGRACIÓN: Módulo de Logística
+-- Agrega tabla detalle_envio_lote para relacionar envíos con
+-- múltiples lotes del cuarto frío.
+-- ============================================================
+
+-- Tabla de detalle: qué lotes van en cada envío
+CREATE TABLE IF NOT EXISTS negocio.detalle_envio_lote (
+    id_detalle   SERIAL PRIMARY KEY,
+    id_envio     INT NOT NULL REFERENCES negocio.envio(id_envio),
+    id_lote      INT NOT NULL REFERENCES negocio.lote_cuarto_frio(id_lote),
+    kilos        DECIMAL(10,2) NOT NULL,
+    observaciones VARCHAR(100),
+    UNIQUE (id_envio, id_lote)
+);
+
+-- Índices para consultas frecuentes
+CREATE INDEX IF NOT EXISTS idx_detalle_envio_lote_envio ON negocio.detalle_envio_lote(id_envio);
+CREATE INDEX IF NOT EXISTS idx_detalle_envio_lote_lote  ON negocio.detalle_envio_lote(id_lote);
+
+-- Migrar los envíos ya creados desde Almacenamiento:
+-- si un lote tiene id_envio, insertarlo en detalle_envio_lote
+INSERT INTO negocio.detalle_envio_lote (id_envio, id_lote, kilos)
+SELECT l.id_envio, l.id_lote, l.kilos
+FROM negocio.lote_cuarto_frio l
+WHERE l.id_envio IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+-- Verificar
+SELECT e.id_envio, e.destino_ciudad, e.estado, COUNT(d.id_lote) AS lotes
+FROM negocio.envio e
+LEFT JOIN negocio.detalle_envio_lote d ON d.id_envio = e.id_envio
+GROUP BY e.id_envio, e.destino_ciudad, e.estado
+ORDER BY e.id_envio;
+
+
+
+
+-- ============================================================
+-- DATOS INICIALES: clientes y puntos de venta de ASOPISTAR
+-- Ejecutar en pgAdmin sobre la base de datos asopistar
+-- ============================================================
+
+-- ── Clientes ────────────────────────────────────────────────────────────────
+INSERT INTO negocio.cliente (nombre1, apellido1, tipo, ciudad, telefono, email, direccion)
+VALUES
+  ('Carlos',    'Martínez',  'MAYORISTA',   'Ocaña',         '3001234567', 'carlos@correo.com',   'Cra 5 # 10-20, Ocaña'),
+  ('Ana',       'Rodríguez', 'RESTAURANTE', 'Cúcuta',        '3109876543', 'ana@correo.com',      'Av 0 # 15-30, Cúcuta'),
+  ('Luis',      'Pérez',     'MINORISTA',   'Bucaramanga',   '3205556677', 'luis@correo.com',     'Cll 30 # 22-10, Bucaramanga'),
+  ('Marleny',   'Torres',    'MAYORISTA',   'Ábrego',        '3154443322', 'marleny@correo.com',  'Cra 3 # 5-40, Ábrego'),
+  ('Ferneini',  'Contreras', 'RESTAURANTE', 'El Tarra',      '3116667788', 'ferni@correo.com',    'Vda El Carmen, El Tarra'),
+  ('Distribuidora', 'Norte', 'MAYORISTA',   'Cúcuta',        '3008889900', 'dnorte@correo.com',   'Zona Industrial, Cúcuta')
+ON CONFLICT DO NOTHING;
+
+-- ── Puntos de venta de ASOPISTAR ─────────────────────────────────────────────
+INSERT INTO negocio.punto_venta (nombre, ciudadd, direccion, activo)
+VALUES
+  ('Punto Físico El Tarra', 'El Tarra', 'Calle Principal s/n, El Tarra, Norte de Santander', true),
+  ('Punto Físico Cúcuta',   'Cúcuta',   'Av. Libertadores # 8-45, Cúcuta, Norte de Santander', true)
+ON CONFLICT DO NOTHING;
+
+-- Verificar
+SELECT 'CLIENTES' AS tabla, COUNT(*) AS total FROM negocio.cliente
+UNION ALL
+SELECT 'PUNTOS_VENTA', COUNT(*) FROM negocio.punto_venta;

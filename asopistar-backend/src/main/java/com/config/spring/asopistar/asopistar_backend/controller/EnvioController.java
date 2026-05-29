@@ -4,52 +4,49 @@ import com.config.spring.asopistar.asopistar_backend.dto.request.EnvioRequestDTO
 import com.config.spring.asopistar.asopistar_backend.dto.response.EnvioResponseDTO;
 import com.config.spring.asopistar.asopistar_backend.service.EnvioService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
- 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/envios")
-@RequiredArgsConstructor
 public class EnvioController {
- 
+
     private final EnvioService envioService;
- 
-    // GET /envios
+
+    public EnvioController(EnvioService envioService) {
+        this.envioService = envioService;
+    }
+
+    // GET /api/envios
     @GetMapping
     public ResponseEntity<List<EnvioResponseDTO>> listarTodos() {
         return ResponseEntity.ok(envioService.listarTodos());
     }
- 
-    // GET /envios/en-camino
-    @GetMapping("/en-camino")
-    public ResponseEntity<List<EnvioResponseDTO>> listarEnCamino() {
-        return ResponseEntity.ok(envioService.listarEnCamino());
-    }
- 
-    // GET /envios/{id}
+
+    // GET /api/envios/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<EnvioResponseDTO> buscarPorId(
-            @PathVariable Integer id) {
+    public ResponseEntity<EnvioResponseDTO> buscarPorId(@PathVariable Integer id) {
         return ResponseEntity.ok(envioService.buscarPorId(id));
     }
- 
-    // POST /envios
+
+    // POST /api/envios  — crear desde Logística
     @PostMapping
     public ResponseEntity<EnvioResponseDTO> crear(
             @Valid @RequestBody EnvioRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(envioService.crear(dto));
+                .body(envioService.crear(dto));
     }
- 
-    // PATCH /envios/{id}/estado?nuevoEstado=ENTREGADO
+
+    // PATCH /api/envios/{id}/estado
     @PatchMapping("/{id}/estado")
     public ResponseEntity<EnvioResponseDTO> cambiarEstado(
             @PathVariable Integer id,
-            @RequestParam String nuevoEstado) {
+            @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(
-            envioService.cambiarEstado(id, nuevoEstado));
+                envioService.cambiarEstado(id, body.get("estado")));
     }
 }
