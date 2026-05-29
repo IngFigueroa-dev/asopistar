@@ -12,6 +12,7 @@ import Reportes from './pages/reportes/Reportes'
 import Configuracion from './pages/configuracion/Configuracion'
 import ProtectedRoute from './components/ProtectedRoute'
 import Recepciones from './pages/recepciones/Recepciones'
+import Procesamiento from './pages/procesamiento/Procesamiento'
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
                   <Route path="/produccion" element={<Produccion />} />
                   <Route path="/calendario" element={<Calendario />} />
                   <Route path="/recepciones" element={<Recepciones />} /> 
+                  <Route path="/procesamiento" element={<Procesamiento />} /> 
                   <Route path="/almacenamiento" element={<Almacenamiento />} />
                   <Route path="/logistica" element={<Logistica />} />
                   <Route path="/pagos" element={<Pagos />} />

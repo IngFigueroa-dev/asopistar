@@ -22,13 +22,22 @@ public class LoteCuartoFrio {
     @Column(name = "kilos", nullable = false, precision = 10, scale = 2)
     private BigDecimal kilos;
 
-    // true = disponible, false = despachado
+    // true = disponible en cuarto frío, false = despachado
     @Column(name = "estado")
     private Boolean estado;
+
+    // PENDIENTE_DECISION → ALMACENADO | DESPACHADO
+    @Column(name = "estado_decision", length = 20)
+    private String estadoDecision;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_recepcion", nullable = false)
     private Recepcion recepcion;
+
+    // Envío creado si se despachó de inmediato (nullable)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_envio")
+    private Envio envio;
 
     // ── Getters y Setters ────────────────────────────────────────────────────
 
@@ -47,6 +56,12 @@ public class LoteCuartoFrio {
     public Boolean getEstado() { return estado; }
     public void setEstado(Boolean estado) { this.estado = estado; }
 
+    public String getEstadoDecision() { return estadoDecision; }
+    public void setEstadoDecision(String estadoDecision) { this.estadoDecision = estadoDecision; }
+
     public Recepcion getRecepcion() { return recepcion; }
     public void setRecepcion(Recepcion recepcion) { this.recepcion = recepcion; }
+
+    public Envio getEnvio() { return envio; }
+    public void setEnvio(Envio envio) { this.envio = envio; }
 }

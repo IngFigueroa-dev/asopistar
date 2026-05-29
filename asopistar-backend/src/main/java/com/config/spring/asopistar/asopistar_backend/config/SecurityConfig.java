@@ -18,7 +18,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -35,32 +34,38 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
 
-                // Permitir preflight CORS
+                // ── Infraestructura ──────────────────────────────────────
+                // Preflight CORS
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Endpoint de error interno de Spring — DEBE ser público
+                // para que los errores lleguen bien al GlobalExceptionHandler
+                .requestMatchers("/error").permitAll()
 
-                // Público
+                // ── Público ──────────────────────────────────────────────
                 .requestMatchers("/auth/**").permitAll()
 
-                // ADMIN
+                // ── ADMIN ────────────────────────────────────────────────
                 .requestMatchers("/roles/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/usuarios/**").hasAuthority("ROLE_ADMIN")
 
-                // BIÓLOGO
+                // ── BIÓLOGO ──────────────────────────────────────────────
                 .requestMatchers(HttpMethod.POST, "/seguimientos/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO")
                 .requestMatchers(HttpMethod.GET, "/siembras/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO",
                         "ROLE_GERENTE_PLANTA", "ROLE_GERENTE_COMERCIAL")
 
-                // GERENTE_PLANTA
+                // ── GERENTE_PLANTA ───────────────────────────────────────
                 .requestMatchers("/recepciones/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
                 .requestMatchers("/turnos-pesca/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
                 .requestMatchers("/lotes-cuarto-frio/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
+                .requestMatchers("/procesamientos/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
 
-                // GERENTE_COMERCIAL
+                // ── GERENTE_COMERCIAL ────────────────────────────────────
                 .requestMatchers("/envios/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL")
                 .requestMatchers("/clientes/**")
@@ -68,13 +73,13 @@ public class SecurityConfig {
                 .requestMatchers("/puntos-venta/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL")
 
-                // CONTADORA
+                // ── CONTADORA ────────────────────────────────────────────
                 .requestMatchers("/pagos-productor/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_CONTADORA")
                 .requestMatchers("/ingresos/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_CONTADORA")
 
-                // ENCARGADO_INSUMOS
+                // ── ENCARGADO_INSUMOS ────────────────────────────────────
                 .requestMatchers("/insumos/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_ENCARGADO_INSUMOS")
                 .requestMatchers("/ventas-insumo/**")

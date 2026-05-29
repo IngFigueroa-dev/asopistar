@@ -15,6 +15,7 @@ const navItems = [
   { to: '/produccion', icon: Fish, label: 'Producción' },
   { to: '/calendario', icon: Calendar, label: 'Calendario de Pesca' },
   { to: '/recepciones', icon: ClipboardCheck, label: 'Recepciones' }, 
+  { to: '/procesamiento', icon: ClipboardCheck, label: 'Procesamiento' }, 
   { to: '/almacenamiento', icon: Snowflake, label: 'Almacenamiento' },
   { to: '/logistica', icon: Truck, label: 'Logística' },
   { to: '/pagos', icon: DollarSign, label: 'Pagos' },

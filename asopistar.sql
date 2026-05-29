@@ -353,3 +353,64 @@ CREATE TABLE negocio.INGRESO
 	CONSTRAINT FK_VENTA_INSUMO_INGRESO FOREIGN KEY (id_venta_insumo) 
     REFERENCES negocio.VENTA_INSUMO  (id_venta_insumo) 
     );
+
+
+
+-- ============================================================
+-- TABLA: procesamiento
+-- Registra las etapas del ciclo de procesamiento del pescado.
+-- Se crea la primera etapa (PESAJE) al registrar una recepción.
+-- Al completar DISTRIBUCION (última etapa), el sistema crea
+-- automáticamente el lote en el cuarto frío.
+--
+-- Flujo: Recepción → PESAJE → EVISCERADO → LIMPIEZA
+--                 → CONGELAMIENTO → DISTRIBUCION → LoteCuartoFrio
+-- ============================================================
+
+-- Si ya existe una versión anterior con id_lote, eliminarla:
+DROP TABLE IF EXISTS negocio.procesamiento;
+
+CREATE TABLE negocio.procesamiento (
+    id_procesamiento SERIAL PRIMARY KEY,
+    etapa            VARCHAR(20)  NOT NULL,
+    -- PESAJE | EVISCERADO | LIMPIEZA | CONGELAMIENTO | DISTRIBUCION
+    estado           VARCHAR(20)  NOT NULL,
+    -- EN_PROCESO | COMPLETADO
+    fecha_inicio     TIMESTAMP,
+    fecha_fin        TIMESTAMP,
+    responsable      VARCHAR(60),
+    observaciones    VARCHAR(150),
+    id_recepcion     INT NOT NULL REFERENCES negocio.recepcion(id_recepcion)
+);
+
+    CREATE INDEX IF NOT EXISTS idx_procesamiento_recepcion
+        ON negocio.procesamiento(id_recepcion);
+
+
+-- ============================================================
+-- MIGRACIÓN v2: lote_cuarto_frio
+-- Agrega estado_decision e id_envio
+-- ============================================================
+
+-- 1. Columna para la decisión (PENDIENTE_DECISION | ALMACENADO | DESPACHADO)
+ALTER TABLE negocio.lote_cuarto_frio
+    ADD COLUMN IF NOT EXISTS estado_decision VARCHAR(20) DEFAULT 'PENDIENTE_DECISION';
+
+-- 2. Columna para el envío generado al despachar de inmediato
+ALTER TABLE negocio.lote_cuarto_frio
+    ADD COLUMN IF NOT EXISTS id_envio INT REFERENCES negocio.envio(id_envio);
+
+-- 3. Actualizar lotes existentes que ya tienen estado definido
+--    (los que ya estaban marcados como disponibles quedan como ALMACENADO)
+UPDATE negocio.lote_cuarto_frio
+SET estado_decision = 'ALMACENADO'
+WHERE estado = true AND estado_decision = 'PENDIENTE_DECISION';
+
+UPDATE negocio.lote_cuarto_frio
+SET estado_decision = 'DESPACHADO'
+WHERE estado = false AND estado_decision = 'PENDIENTE_DECISION';
+
+-- 4. Verificar
+SELECT id_lote, codigo_lote, kilos, estado, estado_decision
+FROM negocio.lote_cuarto_frio
+ORDER BY id_lote;

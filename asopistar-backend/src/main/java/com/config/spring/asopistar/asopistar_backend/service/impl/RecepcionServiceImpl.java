@@ -2,13 +2,13 @@ package com.config.spring.asopistar.asopistar_backend.service.impl;
 
 import com.config.spring.asopistar.asopistar_backend.dto.request.RecepcionRequestDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.RecepcionResponseDTO;
-import com.config.spring.asopistar.asopistar_backend.entity.LoteCuartoFrio;
+import com.config.spring.asopistar.asopistar_backend.entity.Procesamiento;
 import com.config.spring.asopistar.asopistar_backend.entity.Productor;
 import com.config.spring.asopistar.asopistar_backend.entity.Recepcion;
 import com.config.spring.asopistar.asopistar_backend.entity.TurnoPesca;
 import com.config.spring.asopistar.asopistar_backend.exception.BusinessException;
 import com.config.spring.asopistar.asopistar_backend.exception.ResourceNotFoundException;
-import com.config.spring.asopistar.asopistar_backend.repository.LoteCuartoFrioRepository;
+import com.config.spring.asopistar.asopistar_backend.repository.ProcesamientoRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.ProductorRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.RecepcionRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.TurnoPescaRepository;
@@ -26,20 +26,18 @@ public class RecepcionServiceImpl implements RecepcionService {
     private final RecepcionRepository recepcionRepository;
     private final TurnoPescaRepository turnoPescaRepository;
     private final ProductorRepository productorRepository;
-    private final LoteCuartoFrioRepository loteCuartoFrioRepository;
+    private final ProcesamientoRepository procesamientoRepository;
 
     public RecepcionServiceImpl(
             RecepcionRepository recepcionRepository,
             TurnoPescaRepository turnoPescaRepository,
             ProductorRepository productorRepository,
-            LoteCuartoFrioRepository loteCuartoFrioRepository) {
+            ProcesamientoRepository procesamientoRepository) {
         this.recepcionRepository = recepcionRepository;
         this.turnoPescaRepository = turnoPescaRepository;
         this.productorRepository = productorRepository;
-        this.loteCuartoFrioRepository = loteCuartoFrioRepository;
+        this.procesamientoRepository = procesamientoRepository;
     }
-
-    // ── Implementación de RecepcionService ────────────────────────────────────
 
     @Override
     public List<RecepcionResponseDTO> listarTodos() {
@@ -68,50 +66,44 @@ public class RecepcionServiceImpl implements RecepcionService {
     @Transactional
     public RecepcionResponseDTO crear(RecepcionRequestDTO dto) {
 
-        // 1. Validar que el turno existe y está en estado válido
+        // 1. Validar turno
         TurnoPesca turno = turnoPescaRepository.findById(dto.getIdTurno())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Turno de pesca no encontrado con id: " + dto.getIdTurno()));
 
         if (!turno.getEstado().equals("PENDIENTE") && !turno.getEstado().equals("CONFIRMADO")) {
             throw new BusinessException(
-                    "El turno debe estar en estado PENDIENTE o CONFIRMADO. " +
-                    "Estado actual: " + turno.getEstado());
+                    "El turno debe estar en estado PENDIENTE o CONFIRMADO. Estado actual: "
+                    + turno.getEstado());
         }
 
-        // 2. Validar que el productor existe
+        // 2. Validar productor
         Productor productor = productorRepository.findById(dto.getIdProductor())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Productor no encontrado con id: " + dto.getIdProductor()));
 
-        // 3. Crear y guardar la recepción
+        // 3. Guardar recepción
         Recepcion recepcion = new Recepcion();
         recepcion.setFechaHora(dto.getFechaHora());
         recepcion.setKilosRecibidos(dto.getKilosRecibidos());
         recepcion.setObservaciones(dto.getObservaciones());
         recepcion.setProductor(productor);
         recepcion.setTurnoPesca(turno);
-
         Recepcion recepcionGuardada = recepcionRepository.save(recepcion);
 
-        // 4. Marcar el turno como REALIZADO
+        // 4. Marcar turno como REALIZADO
         turno.setEstado("REALIZADO");
         turnoPescaRepository.save(turno);
 
-        // 5. Crear automáticamente el lote en el cuarto frío
-        long totalLotes = loteCuartoFrioRepository.count();
-        String codigoLote = String.format("LOTE-%03d", totalLotes + 1);
+        // 5. Crear primera etapa de procesamiento: PESAJE
+        //    El lote se crea al completar la etapa DISTRIBUCION (última etapa)
+        Procesamiento pesaje = new Procesamiento();
+        pesaje.setEtapa("PESAJE");
+        pesaje.setEstado("EN_PROCESO");
+        pesaje.setFechaInicio(LocalDateTime.now());
+        pesaje.setRecepcion(recepcionGuardada);   // <-- relación con recepción, no con lote
+        procesamientoRepository.save(pesaje);
 
-        LoteCuartoFrio lote = new LoteCuartoFrio();
-        lote.setCodigoLote(codigoLote);
-        lote.setFechaIngreso(LocalDateTime.now());
-        lote.setKilos(dto.getKilosRecibidos());
-        lote.setEstado(true); // true = disponible
-        lote.setRecepcion(recepcionGuardada);
-
-        loteCuartoFrioRepository.save(lote);
-
-        // 6. Retornar DTO de la recepción creada
         return mapToResponseDTO(recepcionGuardada);
     }
 

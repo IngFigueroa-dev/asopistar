@@ -1,26 +1,23 @@
 package com.config.spring.asopistar.asopistar_backend.dto.request;
 
-import lombok.*;
-import jakarta.validation.constraints.*;
-import java.time.LocalDateTime;
- 
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+import jakarta.validation.constraints.NotBlank;
+
 public class ProcesamientoRequestDTO {
- 
-    @NotBlank(message = "La etapa es obligatoria")
-    private String etapa;   // EVISCERADO, LIMPIEZA, CONGELADO
- 
-    @NotNull(message = "La fecha es obligatoria")
-    private LocalDateTime fecha;
- 
+
+    // No se necesita idLote porque el procesamiento se asocia a la recepción
+    private Integer idRecepcion;
+
     @NotBlank(message = "El responsable es obligatorio")
-    @Size(max = 20)
     private String responsable;
- 
-    @NotBlank(message = "Las observaciones son obligatorias")
-    @Size(max = 100)
+
     private String observaciones;
- 
-    @NotNull(message = "El lote es obligatorio")
-    private Integer idLote;
+
+    public Integer getIdRecepcion() { return idRecepcion; }
+    public void setIdRecepcion(Integer idRecepcion) { this.idRecepcion = idRecepcion; }
+
+    public String getResponsable() { return responsable; }
+    public void setResponsable(String responsable) { this.responsable = responsable; }
+
+    public String getObservaciones() { return observaciones; }
+    public void setObservaciones(String observaciones) { this.observaciones = observaciones; }
 }
