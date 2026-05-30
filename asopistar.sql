@@ -484,3 +484,12 @@ ON CONFLICT DO NOTHING;
 SELECT 'CLIENTES' AS tabla, COUNT(*) AS total FROM negocio.cliente
 UNION ALL
 SELECT 'PUNTOS_VENTA', COUNT(*) FROM negocio.punto_venta;
+
+
+
+INSERT INTO negocio.metodo_pago (nombre, descripcion, estado) VALUES
+  ('Efectivo',         'Pago en efectivo en oficina',             'ACTIVO'),
+  ('Transferencia',    'Transferencia bancaria o PSE',            'ACTIVO'),
+  ('Nequi',            'Pago por billetera digital Nequi',        'ACTIVO'),
+  ('Daviplata',        'Pago por billetera digital Daviplata',    'ACTIVO'),
+  ('Cheque',           'Pago mediante cheque bancario',           'ACTIVO');
