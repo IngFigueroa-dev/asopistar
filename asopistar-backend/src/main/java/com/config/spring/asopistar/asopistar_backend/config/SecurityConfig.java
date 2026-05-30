@@ -46,7 +46,6 @@ public class SecurityConfig {
                 .requestMatchers("/usuarios/**").hasAuthority("ROLE_ADMIN")
 
                 // ── PRODUCTORES Y ESTANQUES ──────────────────────────────────
-                // Lectura para varios roles
                 .requestMatchers(HttpMethod.GET, "/productores/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA",
                         "ROLE_BIOLOGO", "ROLE_GERENTE_COMERCIAL", "ROLE_CONTADORA")
@@ -54,6 +53,10 @@ public class SecurityConfig {
                     .hasAnyAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/productores/**")
                     .hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers("/estanques/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO", "ROLE_GERENTE_PLANTA")
+                .requestMatchers("/especies/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO", "ROLE_GERENTE_PLANTA")
 
                 // ── BIÓLOGO ──────────────────────────────────────────────────
                 .requestMatchers(HttpMethod.POST, "/seguimientos/**")
@@ -61,13 +64,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/siembras/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO",
                         "ROLE_GERENTE_PLANTA", "ROLE_GERENTE_COMERCIAL")
-                .requestMatchers("/estanques/**")
-                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO", "ROLE_GERENTE_PLANTA")
-                .requestMatchers("/especies/**")
-                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_BIOLOGO", "ROLE_GERENTE_PLANTA")
 
                 // ── GERENTE_PLANTA ───────────────────────────────────────────
-                .requestMatchers("/recepciones/**")
+                // Recepciones: también lectura para CONTADORA (modal de pagos)
+                .requestMatchers(HttpMethod.GET, "/recepciones/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA", "ROLE_CONTADORA")
+                .requestMatchers(HttpMethod.POST, "/recepciones/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
                 .requestMatchers("/turnos-pesca/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
@@ -77,15 +79,12 @@ public class SecurityConfig {
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_PLANTA")
 
                 // ── CLIENTES Y PUNTOS DE VENTA ───────────────────────────────
-                // GET: accesible por Gerente Planta (para seleccionar al despachar),
-                //      Gerente Comercial y Admin
                 .requestMatchers(HttpMethod.GET, "/clientes/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL",
                         "ROLE_GERENTE_PLANTA")
                 .requestMatchers(HttpMethod.GET, "/puntos-venta/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL",
                         "ROLE_GERENTE_PLANTA")
-                // Escritura solo para Gerente Comercial y Admin
                 .requestMatchers(HttpMethod.POST, "/clientes/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL")
                 .requestMatchers(HttpMethod.PUT, "/clientes/**")
@@ -96,11 +95,9 @@ public class SecurityConfig {
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL")
 
                 // ── ENVÍOS (Logística) ───────────────────────────────────────
-                // GET: Gerente Planta ve sus envíos desde Almacenamiento
                 .requestMatchers(HttpMethod.GET, "/envios/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL",
                         "ROLE_GERENTE_PLANTA")
-                // POST / PATCH: solo Gerente Comercial y Admin
                 .requestMatchers(HttpMethod.POST, "/envios/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_GERENTE_COMERCIAL",
                         "ROLE_GERENTE_PLANTA")
@@ -110,6 +107,8 @@ public class SecurityConfig {
 
                 // ── CONTADORA ────────────────────────────────────────────────
                 .requestMatchers("/pagos-productor/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_CONTADORA")
+                .requestMatchers("/metodos-pago/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_CONTADORA")
                 .requestMatchers("/ingresos/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_CONTADORA")

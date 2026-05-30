@@ -2,13 +2,13 @@ package com.config.spring.asopistar.asopistar_backend.service.impl;
 
 import com.config.spring.asopistar.asopistar_backend.dto.request.RecepcionRequestDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.RecepcionResponseDTO;
-import com.config.spring.asopistar.asopistar_backend.entity.Procesamiento;
+import com.config.spring.asopistar.asopistar_backend.entity.LoteCuartoFrio;
 import com.config.spring.asopistar.asopistar_backend.entity.Productor;
 import com.config.spring.asopistar.asopistar_backend.entity.Recepcion;
 import com.config.spring.asopistar.asopistar_backend.entity.TurnoPesca;
 import com.config.spring.asopistar.asopistar_backend.exception.BusinessException;
 import com.config.spring.asopistar.asopistar_backend.exception.ResourceNotFoundException;
-import com.config.spring.asopistar.asopistar_backend.repository.ProcesamientoRepository;
+import com.config.spring.asopistar.asopistar_backend.repository.LoteCuartoFrioRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.ProductorRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.RecepcionRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.TurnoPescaRepository;
@@ -21,104 +21,139 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class RecepcionServiceImpl implements RecepcionService {
 
-    private final RecepcionRepository recepcionRepository;
-    private final TurnoPescaRepository turnoPescaRepository;
-    private final ProductorRepository productorRepository;
-    private final ProcesamientoRepository procesamientoRepository;
+    private final RecepcionRepository      recepcionRepo;
+    private final ProductorRepository      productorRepo;
+    private final TurnoPescaRepository     turnoRepo;
+    private final LoteCuartoFrioRepository loteRepo;
 
-    public RecepcionServiceImpl(
-            RecepcionRepository recepcionRepository,
-            TurnoPescaRepository turnoPescaRepository,
-            ProductorRepository productorRepository,
-            ProcesamientoRepository procesamientoRepository) {
-        this.recepcionRepository = recepcionRepository;
-        this.turnoPescaRepository = turnoPescaRepository;
-        this.productorRepository = productorRepository;
-        this.procesamientoRepository = procesamientoRepository;
+    public RecepcionServiceImpl(RecepcionRepository recepcionRepo,
+                                ProductorRepository productorRepo,
+                                TurnoPescaRepository turnoRepo,
+                                LoteCuartoFrioRepository loteRepo) {
+        this.recepcionRepo = recepcionRepo;
+        this.productorRepo = productorRepo;
+        this.turnoRepo     = turnoRepo;
+        this.loteRepo      = loteRepo;
     }
 
-    @Override
-    public List<RecepcionResponseDTO> listarTodos() {
-        return recepcionRepository.findAll().stream()
-                .map(this::mapToResponseDTO)
-                .collect(Collectors.toList());
-    }
+    // ── Registrar nueva recepción ─────────────────────────────────────────────
 
     @Override
-    public List<RecepcionResponseDTO> listarPorProductor(Integer idProductor) {
-        return recepcionRepository.findAll().stream()
-                .filter(r -> r.getProductor().getIdProductor().equals(idProductor))
-                .map(this::mapToResponseDTO)
-                .collect(Collectors.toList());
-    }
+    public RecepcionResponseDTO registrar(RecepcionRequestDTO request) {
 
-    @Override
-    public RecepcionResponseDTO buscarPorId(Integer id) {
-        Recepcion recepcion = recepcionRepository.findById(id)
+        Productor productor = productorRepo.findById(request.getIdProductor())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Recepción no encontrada con id: " + id));
-        return mapToResponseDTO(recepcion);
-    }
+                        "Productor no encontrado: " + request.getIdProductor()));
 
-    @Override
-    @Transactional
-    public RecepcionResponseDTO crear(RecepcionRequestDTO dto) {
-
-        // 1. Validar turno
-        TurnoPesca turno = turnoPescaRepository.findById(dto.getIdTurno())
+        TurnoPesca turno = turnoRepo.findById(request.getIdTurno())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Turno de pesca no encontrado con id: " + dto.getIdTurno()));
+                        "Turno no encontrado: " + request.getIdTurno()));
 
-        if (!turno.getEstado().equals("PENDIENTE") && !turno.getEstado().equals("CONFIRMADO")) {
+        if (!"CONFIRMADO".equals(turno.getEstado()) && !"PENDIENTE".equals(turno.getEstado())) {
             throw new BusinessException(
-                    "El turno debe estar en estado PENDIENTE o CONFIRMADO. Estado actual: "
-                    + turno.getEstado());
+                    "El turno #" + request.getIdTurno() + " no está en estado válido para recepción.");
         }
 
-        // 2. Validar productor
-        Productor productor = productorRepository.findById(dto.getIdProductor())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Productor no encontrado con id: " + dto.getIdProductor()));
-
-        // 3. Guardar recepción
         Recepcion recepcion = new Recepcion();
-        recepcion.setFechaHora(dto.getFechaHora());
-        recepcion.setKilosRecibidos(dto.getKilosRecibidos());
-        recepcion.setObservaciones(dto.getObservaciones());
+        recepcion.setFechaHora(LocalDateTime.now());
+        recepcion.setKilosRecibidos(request.getKilosRecibidos());
+        recepcion.setObservaciones(request.getObservaciones());
         recepcion.setProductor(productor);
         recepcion.setTurnoPesca(turno);
-        Recepcion recepcionGuardada = recepcionRepository.save(recepcion);
 
-        // 4. Marcar turno como REALIZADO
+        Recepcion saved = recepcionRepo.save(recepcion);
+
         turno.setEstado("REALIZADO");
-        turnoPescaRepository.save(turno);
+        turnoRepo.save(turno);
 
-        // 5. Crear primera etapa de procesamiento: PESAJE
-        //    El lote se crea al completar la etapa DISTRIBUCION (última etapa)
-        Procesamiento pesaje = new Procesamiento();
-        pesaje.setEtapa("PESAJE");
-        pesaje.setEstado("EN_PROCESO");
-        pesaje.setFechaInicio(LocalDateTime.now());
-        pesaje.setRecepcion(recepcionGuardada);   // <-- relación con recepción, no con lote
-        procesamientoRepository.save(pesaje);
+        crearLoteAutomatico(saved);
 
-        return mapToResponseDTO(recepcionGuardada);
+        return toResponse(saved);
     }
 
-    // ── Mapper ────────────────────────────────────────────────────────────────
+    private void crearLoteAutomatico(Recepcion recepcion) {
+        long totalLotes = loteRepo.count();
+        String codigoLote = String.format("LOTE-%03d", totalLotes + 1);
 
-    private RecepcionResponseDTO mapToResponseDTO(Recepcion r) {
-        Productor p = r.getProductor();
+        LoteCuartoFrio lote = new LoteCuartoFrio();
+        lote.setCodigoLote(codigoLote);
+        lote.setFechaIngreso(recepcion.getFechaHora());
+        lote.setKilos(recepcion.getKilosRecibidos());
+        lote.setEstado(true);
+        lote.setEstadoDecision("PENDIENTE_DECISION");
+        lote.setRecepcion(recepcion);
+
+        loteRepo.save(lote);
+    }
+
+    // ── Listar todas ──────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RecepcionResponseDTO> listarTodas() {
+        return recepcionRepo.findAllByOrderByFechaHoraDesc()
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    // ── Listar por productor ──────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RecepcionResponseDTO> listarPorProductor(Integer idProductor) {
+        return recepcionRepo
+                .findByProductor_IdProductorOrderByFechaHoraDesc(idProductor)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    // ── Listar sin pago PAGADO por productor (FIX: dentro de transacción → no lazy) ──
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RecepcionResponseDTO> listarSinPagoPorProductor(Integer idProductor) {
+        return recepcionRepo
+                .findSinPagoPorProductor(idProductor)
+                .stream()
+                .map(this::toResponse)   // mapeo dentro de la transacción → sin LazyInitializationException
+                .collect(Collectors.toList());
+    }
+
+    // ── Obtener por ID ────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public RecepcionResponseDTO obtenerPorId(Integer id) {
+        Recepcion r = recepcionRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Recepción no encontrada: " + id));
+        return toResponse(r);
+    }
+
+    // ── Mapeo entidad → DTO (siempre dentro de @Transactional) ───────────────
+
+    private RecepcionResponseDTO toResponse(Recepcion r) {
         RecepcionResponseDTO dto = new RecepcionResponseDTO();
         dto.setIdRecepcion(r.getIdRecepcion());
         dto.setFechaHora(r.getFechaHora());
         dto.setKilosRecibidos(r.getKilosRecibidos());
         dto.setObservaciones(r.getObservaciones());
-        dto.setIdProductor(p.getIdProductor());
-        dto.setNombreProductor(p.getNombre1() + " " + p.getApellido1());
-        dto.setIdTurno(r.getTurnoPesca().getIdTurno());
+
+        if (r.getProductor() != null) {
+            dto.setIdProductor(r.getProductor().getIdProductor());
+            dto.setNombreProductor(
+                r.getProductor().getNombre1() + " " + r.getProductor().getApellido1());
+        }
+
+        if (r.getTurnoPesca() != null) {
+            dto.setIdTurno(r.getTurnoPesca().getIdTurno());
+        }
+
         return dto;
     }
 }
