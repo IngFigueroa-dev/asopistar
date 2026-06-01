@@ -161,6 +161,10 @@ public class UsuarioServiceImpl implements UsuarioService {
             }
         }
 
+        
+
+
+
         // Rol provisional: siempre PRODUCTOR hasta que el admin apruebe y asigne el real.
         // Para el token JWT no importa aún porque el usuario no puede iniciar sesión.
         Rol rolProvisional = rolRepository.findByNombre("PRODUCTOR")
