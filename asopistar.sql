@@ -493,3 +493,155 @@ INSERT INTO negocio.metodo_pago (nombre, descripcion, estado) VALUES
   ('Nequi',            'Pago por billetera digital Nequi',        'ACTIVO'),
   ('Daviplata',        'Pago por billetera digital Daviplata',    'ACTIVO'),
   ('Cheque',           'Pago mediante cheque bancario',           'ACTIVO');
+
+
+
+
+
+
+
+
+
+
+
+
+  ------------------- CAMBIO DE ROLES --------------------------------------------
+
+
+  -- ============================================================
+-- ASOPISTAR — Migración Fase 1: Sistema de Registro y Aprobación
+-- Ejecutar en orden. Ninguna tabla existente se elimina.
+-- Schema: negocio
+-- ============================================================
+
+-- ── 1. Nuevas columnas en negocio.usuario ───────────────────
+--    Se agregan sin afectar filas existentes (nullable o con DEFAULT)
+
+ALTER TABLE negocio.usuario
+    ADD COLUMN IF NOT EXISTS documento        VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS telefono         VARCHAR(15),
+    ADD COLUMN IF NOT EXISTS cargo_solicitado VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS estado           VARCHAR(30) NOT NULL DEFAULT 'ACTIVO',
+    ADD COLUMN IF NOT EXISTS token_verificacion   VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS fecha_expiracion_token TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS fecha_nacimiento  DATE,
+    ADD COLUMN IF NOT EXISTS cantidad_hijos    INTEGER,
+    ADD COLUMN IF NOT EXISTS direccion         VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS fecha_aprobacion  TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS aprobado_por      INTEGER REFERENCES negocio.usuario(id_usuario),
+    ADD COLUMN IF NOT EXISTS motivo_rechazo    VARCHAR(255);
+
+-- Comentario de columnas para documentación
+COMMENT ON COLUMN negocio.usuario.estado IS
+    'PENDIENTE_VERIFICACION | PENDIENTE_APROBACION | ACTIVO | RECHAZADO | INACTIVO';
+COMMENT ON COLUMN negocio.usuario.cargo_solicitado IS
+    'Cargo que el usuario seleccionó al registrarse. El admin asigna el rol real al aprobar.';
+COMMENT ON COLUMN negocio.usuario.token_verificacion IS
+    'UUID de 36 caracteres enviado al correo para verificar la cuenta.';
+
+-- ── 2. Los usuarios admin ya existentes quedan en estado ACTIVO ─
+--    El DEFAULT 'ACTIVO' ya los cubre, pero lo explicitamos
+UPDATE negocio.usuario
+SET    estado = 'ACTIVO'
+WHERE  activo = true
+  AND  estado = 'ACTIVO';   -- no-op seguro, confirma el default
+
+-- ── 3. Roles nuevos requeridos por el nuevo modelo de negocio ──
+--    Solo inserta si no existen (idempotente)
+
+INSERT INTO negocio.rol (nombre, descripcion)
+SELECT 'ADMINISTRADOR_GENERAL', 'Acceso total al sistema, gestión de usuarios y aprobaciones'
+WHERE NOT EXISTS (SELECT 1 FROM negocio.rol WHERE nombre = 'ADMINISTRADOR_GENERAL');
+
+INSERT INTO negocio.rol (nombre, descripcion)
+SELECT 'PRODUCTOR', 'Acceso a calendario de pesca, historial propio e insumos'
+WHERE NOT EXISTS (SELECT 1 FROM negocio.rol WHERE nombre = 'PRODUCTOR');
+
+INSERT INTO negocio.rol (nombre, descripcion)
+SELECT 'BIOLOGO', 'Registro de seguimientos, monitoreos y visitas técnicas'
+WHERE NOT EXISTS (SELECT 1 FROM negocio.rol WHERE nombre = 'BIOLOGO');
+
+INSERT INTO negocio.rol (nombre, descripcion)
+SELECT 'GERENTE_PLANTA', 'Gestión de recepciones, procesamiento y almacenamiento'
+WHERE NOT EXISTS (SELECT 1 FROM negocio.rol WHERE nombre = 'GERENTE_PLANTA');
+
+INSERT INTO negocio.rol (nombre, descripcion)
+SELECT 'PERSONAL_CUARTO_FRIO', 'Registro de procesamiento y actualización de lotes'
+WHERE NOT EXISTS (SELECT 1 FROM negocio.rol WHERE nombre = 'PERSONAL_CUARTO_FRIO');
+
+INSERT INTO negocio.rol (nombre, descripcion)
+SELECT 'CONTADORA', 'Gestión de pagos, ingresos y reportes financieros'
+WHERE NOT EXISTS (SELECT 1 FROM negocio.rol WHERE nombre = 'CONTADORA');
+
+INSERT INTO negocio.rol (nombre, descripcion)
+SELECT 'SECRETARIA', 'Registro administrativo, productores y reportes'
+WHERE NOT EXISTS (SELECT 1 FROM negocio.rol WHERE nombre = 'SECRETARIA');
+
+INSERT INTO negocio.rol (nombre, descripcion)
+SELECT 'GERENTE_COMERCIAL', 'Gestión de logística, ventas, clientes y reportes comerciales'
+WHERE NOT EXISTS (SELECT 1 FROM negocio.rol WHERE nombre = 'GERENTE_COMERCIAL');
+
+INSERT INTO negocio.rol (nombre, descripcion)
+SELECT 'VENDEDOR_INSUMOS', 'Registro de ventas de concentrado y alevinos'
+WHERE NOT EXISTS (SELECT 1 FROM negocio.rol WHERE nombre = 'VENDEDOR_INSUMOS');
+
+-- ── 4. Ampliar longitud del email en usuario ─────────────────
+--    30 chars es muy justo para emails reales
+ALTER TABLE negocio.usuario
+    ALTER COLUMN email TYPE VARCHAR(100);
+
+-- ── 5. Ampliar longitud del email en cliente (mismo motivo) ──
+ALTER TABLE negocio.cliente
+    ALTER COLUMN email TYPE VARCHAR(100);
+
+-- ── 6. Tabla de historial de solicitudes de acceso ──────────
+--    Guarda el rastro de cada aprobación/rechazo para auditoría
+CREATE TABLE IF NOT EXISTS negocio.historial_solicitud (
+    id_historial   SERIAL PRIMARY KEY,
+    id_usuario     INT NOT NULL REFERENCES negocio.usuario(id_usuario),
+    accion         VARCHAR(30) NOT NULL,   -- APROBADO | RECHAZADO | REENVIO_VERIFICACION
+    realizado_por  INT REFERENCES negocio.usuario(id_usuario),
+    fecha_accion   TIMESTAMP NOT NULL DEFAULT NOW(),
+    observacion    VARCHAR(255)
+);
+
+COMMENT ON TABLE negocio.historial_solicitud IS
+    'Auditoría de aprobaciones, rechazos y reenvíos de verificación de usuarios.';
+
+-- ── 7. Índices útiles para las consultas frecuentes ──────────
+CREATE INDEX IF NOT EXISTS idx_usuario_estado
+    ON negocio.usuario(estado);
+
+CREATE INDEX IF NOT EXISTS idx_usuario_token
+    ON negocio.usuario(token_verificacion)
+    WHERE token_verificacion IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_historial_usuario
+    ON negocio.historial_solicitud(id_usuario);
+
+-- ── 8. Verificación final ────────────────────────────────────
+--    Ejecuta esto para confirmar que todo quedó bien
+DO $$
+BEGIN
+    RAISE NOTICE '=== Verificación de migración ASOPISTAR ===';
+    RAISE NOTICE 'Columnas en negocio.usuario: %',
+        (SELECT COUNT(*) FROM information_schema.columns
+         WHERE table_schema = 'negocio' AND table_name = 'usuario');
+    RAISE NOTICE 'Total roles: %',
+        (SELECT COUNT(*) FROM negocio.rol);
+    RAISE NOTICE 'Tabla historial_solicitud existe: %',
+        (SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'negocio' AND table_name = 'historial_solicitud'
+        ));
+    RAISE NOTICE '=== Migración completada exitosamente ===';
+END $$;
+
+
+---------------------- ACTUALIZACION DE ROL ADMIN PARA PRUEBAS -----------
+
+UPDATE negocio.usuario
+SET id_rol = (SELECT id_rol FROM negocio.rol WHERE nombre = 'ADMINISTRADOR_GENERAL'),
+    estado = 'ACTIVO',
+    activo = true
+WHERE email = 'admin@asopistar.com';
