@@ -1,43 +1,21 @@
+// src/components/layout/Layout.jsx
 import { useState } from 'react'
 import useSessionTimeout from '../../hooks/useSessionTimeout'
 import { NavLink, useNavigate } from 'react-router-dom'
-import {
-  LayoutDashboard, Users, Fish, Calendar,
-  Snowflake, Truck, DollarSign, BarChart2,
-  Settings, LogOut, Menu, X
-} from 'lucide-react'
-import { ClipboardCheck } from 'lucide-react'
-
-
-const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Panel Principal' },
-  { to: '/productores', icon: Users, label: 'Productores' },
-  { to: '/produccion', icon: Fish, label: 'Producción' },
-  { to: '/calendario', icon: Calendar, label: 'Calendario de Pesca' },
-  { to: '/recepciones', icon: ClipboardCheck, label: 'Recepciones' }, 
-  { to: '/procesamiento', icon: ClipboardCheck, label: 'Procesamiento' }, 
-  { to: '/almacenamiento', icon: Snowflake, label: 'Almacenamiento' },
-  { to: '/logistica', icon: Truck, label: 'Logística' },
-  { to: '/pagos', icon: DollarSign, label: 'Pagos' },
-  { to: '/reportes', icon: BarChart2, label: 'Reportes' },
-  { to: '/configuracion', icon: Settings, label: 'Configuración' },
-]
+import { LogOut, Menu, X } from 'lucide-react'
+import { getNavItemsParaRol, ROL_LABELS } from '../../config/navItemsByRol'
 
 function Layout({ children }) {
   useSessionTimeout()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const email = localStorage.getItem('email') || 'Usuario'
-  const rol = localStorage.getItem('rol') || ''
 
-  const rolLabel = {
-    'ROLE_ADMIN': 'Administrador',
-    'ROLE_BIOLOGO': 'Biólogo',
-    'ROLE_GERENTE_PLANTA': 'Gerente de Planta',
-    'ROLE_GERENTE_COMERCIAL': 'Gerente Comercial',
-    'ROLE_CONTADORA': 'Contadora',
-    'ROLE_ENCARGADO_INSUMOS': 'Encargado de Insumos',
-  }[rol] || rol
+  const email  = localStorage.getItem('email')  || 'Usuario'
+  const rol    = localStorage.getItem('rol')    || ''
+  const nombre = localStorage.getItem('nombre') || email
+
+  const rolLabel = ROL_LABELS[rol] || rol
+  const navItems = getNavItemsParaRol(rol)
 
   const handleLogout = () => {
     localStorage.clear()
@@ -47,11 +25,12 @@ function Layout({ children }) {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
 
-      {/* Sidebar */}
+      {/* ── Sidebar ────────────────────────────────────────────── */}
       <aside className={`
         ${sidebarOpen ? 'w-64' : 'w-20'}
         bg-[#1a2332] flex flex-col transition-all duration-300 shrink-0
       `}>
+
         {/* Logo */}
         <div className="flex items-center gap-3 p-5 border-b border-white/10">
           <div className="text-2xl shrink-0">🐟</div>
@@ -63,7 +42,7 @@ function Layout({ children }) {
           )}
         </div>
 
-        {/* Nav */}
+        {/* Navegación filtrada por rol */}
         <nav className="flex-1 py-4 overflow-y-auto">
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
@@ -95,7 +74,7 @@ function Layout({ children }) {
         </div>
       </aside>
 
-      {/* Main */}
+      {/* ── Main ───────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Header */}
@@ -109,16 +88,16 @@ function Layout({ children }) {
 
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-semibold text-gray-800">{'Usuario'}</p>  
+              <p className="text-sm font-semibold text-gray-800">{nombre}</p>
               <p className="text-xs text-gray-500">{rolLabel}</p>
             </div>
             <div className="w-9 h-9 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-              {email.charAt(0).toUpperCase()}
+              {nombre.charAt(0).toUpperCase()}
             </div>
           </div>
         </header>
 
-        {/* Content */}
+        {/* Contenido */}
         <main className="flex-1 overflow-y-auto p-6">
           {children}
         </main>

@@ -1,11 +1,12 @@
+// src/pages/auth/Login.jsx
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import api from '../../services/api'
 
 function Login() {
   const navigate = useNavigate()
-  const [form, setForm] = useState({ email: '', contrasena: '' })
-  const [error, setError] = useState('')
+  const [form, setForm]       = useState({ email: '', contrasena: '' })
+  const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -14,19 +15,28 @@ function Login() {
     setError('')
     try {
       const res = await api.post('/auth/login', form)
-      localStorage.setItem('token', res.data.token)
-      localStorage.setItem('email', res.data.email)
-      localStorage.setItem('rol', res.data.rol)
+      localStorage.setItem('token',    res.data.token)
+      localStorage.setItem('email',    res.data.email)
+      localStorage.setItem('rol',      res.data.rol)
+      localStorage.setItem('nombre',   res.data.nombre)
+      localStorage.setItem('idUsuario', res.data.idUsuario)
       navigate('/dashboard')
     } catch (err) {
-      setError('Correo o contraseña incorrectos. Intenta de nuevo.')
+      const status = err.response?.status
+      if (status === 401) {
+        setError('Correo o contraseña incorrectos.')
+      } else if (status === 403) {
+        setError('Tu cuenta aún no está aprobada o fue desactivada.')
+      } else {
+        setError('Error de conexión. Intenta de nuevo.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a2332] to-[#0d9488] p-5">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-[#1a2332] to-[#0d9488] p-5">
       <div className="bg-white rounded-2xl p-12 w-full max-w-md shadow-2xl">
 
         {/* Logo */}
@@ -38,7 +48,6 @@ function Login() {
 
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">
               Correo electrónico
@@ -82,8 +91,20 @@ function Login() {
           </button>
         </form>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-8">
+        {/* Enlace a registro */}
+        <div className="text-center mt-6">
+          <p className="text-sm text-gray-500">
+            ¿Eres nuevo en el sistema?{' '}
+            <Link
+              to="/registro"
+              className="text-teal-600 hover:text-teal-700 font-semibold"
+            >
+              Solicitar acceso
+            </Link>
+          </p>
+        </div>
+
+        <p className="text-center text-xs text-gray-400 mt-6">
           Asociación de Piscicultores del Tarra
         </p>
       </div>
