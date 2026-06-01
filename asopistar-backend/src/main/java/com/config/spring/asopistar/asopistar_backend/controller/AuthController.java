@@ -1,48 +1,89 @@
 package com.config.spring.asopistar.asopistar_backend.controller;
 
+import com.config.spring.asopistar.asopistar_backend.dto.request.RegistroRequestDTO;
+import com.config.spring.asopistar.asopistar_backend.dto.response.LoginResponseDTO;
+import com.config.spring.asopistar.asopistar_backend.entity.Usuario;
 import com.config.spring.asopistar.asopistar_backend.security.JwtTokenProvider;
+import com.config.spring.asopistar.asopistar_backend.service.UsuarioService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import java.util.HashMap;
+
 import java.util.Map;
- 
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
- 
+
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider jwtTokenProvider;
- 
-    // POST /auth/login
-    // Body: { "email": "...", "contrasena": "..." }
+    private final JwtTokenProvider      jwtTokenProvider;
+    private final UsuarioService        usuarioService;
+
+    // ── POST /auth/login ─────────────────────────────────────────────────────
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(
+    public ResponseEntity<LoginResponseDTO> login(
             @RequestBody Map<String, String> credenciales) {
- 
+
         Authentication auth = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(
                 credenciales.get("email"),
                 credenciales.get("contrasena")
             )
         );
- 
-        UserDetails userDetails = (UserDetails) auth.getPrincipal();
-        String token = jwtTokenProvider.generateToken(userDetails);
- 
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", token);
-        response.put("tipo", "Bearer");
-        response.put("email", userDetails.getUsername());
-        response.put("rol", userDetails.getAuthorities()
-            .iterator().next().getAuthority());
- 
+
+        Usuario usuario = (Usuario) auth.getPrincipal();
+        String token = jwtTokenProvider.generateToken(usuario);
+
+        LoginResponseDTO response = LoginResponseDTO.builder()
+            .token(token)
+            .tipo("Bearer")
+            .email(usuario.getEmail())
+            .rol(usuario.getAuthorities().iterator().next().getAuthority())
+            .nombre(usuario.getNombre1() + " " + usuario.getApellido1())
+            .idUsuario(usuario.getIdUsuario())
+            .build();
+
         return ResponseEntity.ok(response);
     }
+
+    // ── POST /auth/registro ──────────────────────────────────────────────────
+    // Endpoint público — cualquier persona puede registrarse
+    @PostMapping("/registro")
+    public ResponseEntity<Map<String, String>> registro(
+            @Valid @RequestBody RegistroRequestDTO dto) {
+
+        usuarioService.registrar(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+            "mensaje", "Registro exitoso. Revisa tu correo para verificar tu cuenta."
+        ));
+    }
+
+    // ── GET /auth/verificar-email?token=UUID ────────────────────────────────
+    // El usuario llega aquí al hacer clic en el enlace del correo
+    @GetMapping("/verificar-email")
+    public ResponseEntity<Map<String, String>> verificarEmail(
+            @RequestParam String token) {
+
+        usuarioService.verificarEmail(token);
+        return ResponseEntity.ok(Map.of(
+            "mensaje", "Correo verificado exitosamente. Tu solicitud está en revisión."
+        ));
+    }
+
+    // ── POST /auth/reenviar-verificacion ────────────────────────────────────
+    @PostMapping("/reenviar-verificacion")
+    public ResponseEntity<Map<String, String>> reenviarVerificacion(
+            @RequestBody Map<String, String> body) {
+
+        usuarioService.reenviarVerificacion(body.get("email"));
+        return ResponseEntity.ok(Map.of(
+            "mensaje", "Se envió un nuevo enlace de verificación a tu correo."
+        ));
+    }
 }
- 

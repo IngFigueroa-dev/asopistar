@@ -20,5 +20,8 @@ public interface ProductorRepository extends JpaRepository<Productor, Integer> {
  
     // Productor asociado a un usuario del sistema
     Optional<Productor> findByUsuarioIdUsuario(Integer idUsuario);
+
+
+    boolean existsByUsuarioIdUsuario(Integer idUsuario);
 }
 

@@ -20,4 +20,8 @@ public interface SeguimientoSiembraRepository
  
     // Seguimientos que el biólogo marcó como aptos para cosecha
     List<SeguimientoSiembra> findByAptoCosecha(Character aptoCosecha);
+
+
+    // Necesario para ReporteServiceImpl — devuelve los seguimientos de una siembra
+    List<SeguimientoSiembra> findBySiembra_IdSiembra(Integer idSiembra);
 }

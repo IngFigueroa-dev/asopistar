@@ -13,4 +13,5 @@ public interface RolRepository extends JpaRepository<Rol, Integer> {
  
     // Verificar si ya existe un rol con ese nombre
     boolean existsByNombre(String nombre);
+
 }

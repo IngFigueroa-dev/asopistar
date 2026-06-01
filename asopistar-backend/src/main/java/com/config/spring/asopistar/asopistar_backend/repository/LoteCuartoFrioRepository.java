@@ -25,5 +25,4 @@ public interface LoteCuartoFrioRepository
     @Query("SELECT SUM(l.kilos) FROM LoteCuartoFrio l WHERE l.estado = true")
     BigDecimal sumKilosDisponibles();
  
-    
 }
