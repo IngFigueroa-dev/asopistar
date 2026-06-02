@@ -778,3 +778,97 @@ FROM information_schema.columns
 WHERE table_schema = 'negocio'
   AND table_name   = 'venta_insumo'
   AND column_name  = 'id_productor';
+
+
+
+
+
+----------------------- CREACION DEL MODULO CLIENTE -------------------
+
+-- ============================================================
+--  ASOPISTAR — Migración tabla cliente → modelo B2B
+--  Ejecutar en PostgreSQL sobre la BD: asopistar
+--  Schema: negocio
+-- ============================================================
+
+-- PASO 1: Eliminar tabla antigua (vacía, sin datos de producción)
+DROP TABLE IF EXISTS negocio.cliente CASCADE;
+
+-- PASO 2: Crear tabla cliente empresarial B2B
+CREATE TABLE negocio.cliente (
+    id_cliente            SERIAL PRIMARY KEY,
+
+    -- Identificación empresarial
+    tipo_documento        VARCHAR(20)   NOT NULL,          -- NIT, CC, CE, PASAPORTE
+    numero_documento      VARCHAR(20)   NOT NULL UNIQUE,
+    nit                   VARCHAR(20)   NOT NULL UNIQUE,   -- NIT con dígito verificación
+    razon_social          VARCHAR(100)  NOT NULL,
+
+    -- Clasificación
+    tipo_cliente          VARCHAR(30)   NOT NULL,          -- DISTRIBUIDOR, PUNTO_DE_VENTA, EMPRESA, COMERCIALIZADORA, OTRO
+    clasificacion_comercial VARCHAR(20) NOT NULL DEFAULT 'ACTIVO', -- PREFERENCIAL, ACTIVO, INACTIVO, BLOQUEADO
+
+    -- Contacto principal
+    nombre_contacto       VARCHAR(60)   NOT NULL,
+    cargo_contacto        VARCHAR(50)   NOT NULL,
+    telefono              VARCHAR(15)   NOT NULL,
+    telefono_secundario   VARCHAR(15),
+    correo                VARCHAR(80)   NOT NULL UNIQUE,
+    correo_secundario     VARCHAR(80),
+
+    -- Ubicación
+    direccion             VARCHAR(120)  NOT NULL,
+    ciudad                VARCHAR(60)   NOT NULL,
+    departamento          VARCHAR(60)   NOT NULL,
+
+    -- Información comercial
+    limite_credito        DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+    observaciones         VARCHAR(300),
+
+    -- Estado y auditoría
+    estado                VARCHAR(20)   NOT NULL DEFAULT 'ACTIVO', -- ACTIVO, INACTIVO, BLOQUEADO
+    fecha_creacion        TIMESTAMP     NOT NULL DEFAULT NOW(),
+    fecha_actualizacion   TIMESTAMP
+);
+
+-- Índices para búsquedas frecuentes
+CREATE INDEX idx_cliente_razon_social    ON negocio.cliente (LOWER(razon_social));
+CREATE INDEX idx_cliente_nit             ON negocio.cliente (nit);
+CREATE INDEX idx_cliente_tipo            ON negocio.cliente (tipo_cliente);
+CREATE INDEX idx_cliente_estado          ON negocio.cliente (estado);
+CREATE INDEX idx_cliente_clasificacion   ON negocio.cliente (clasificacion_comercial);
+CREATE INDEX idx_cliente_ciudad          ON negocio.cliente (ciudad);
+
+-- ============================================================
+--  DATOS DE PRUEBA
+-- ============================================================
+INSERT INTO negocio.cliente (
+    tipo_documento, numero_documento, nit, razon_social, tipo_cliente,
+    clasificacion_comercial, nombre_contacto, cargo_contacto,
+    telefono, correo, direccion, ciudad, departamento,
+    limite_credito, estado
+) VALUES
+(
+    'NIT', '900123456', '900123456-1',
+    'Distribuidora Norte S.A.S', 'DISTRIBUIDOR',
+    'PREFERENCIAL', 'Carlos Ramírez', 'Gerente de Compras',
+    '3001234567', 'distribuidoranorte@gmail.com',
+    'Calle 5 #10-20', 'Cúcuta', 'Norte de Santander',
+    10000000.00, 'ACTIVO'
+),
+(
+    'NIT', '800987654', '800987654-2',
+    'Comercializadora del Sur Ltda', 'COMERCIALIZADORA',
+    'ACTIVO', 'María López', 'Directora Comercial',
+    '3109876543', 'comercializadorasur@hotmail.com',
+    'Carrera 12 #34-56', 'Ocaña', 'Norte de Santander',
+    5000000.00, 'ACTIVO'
+),
+(
+    'NIT', '700456789', '700456789-3',
+    'Pescadería El Buen Sabor', 'PUNTO_DE_VENTA',
+    'ACTIVO', 'Pedro Gómez', 'Propietario',
+    '3205551234', 'buensabor@pescados.com',
+    'Av. Principal #7-90', 'Tibú', 'Norte de Santander',
+    2000000.00, 'ACTIVO'
+);
