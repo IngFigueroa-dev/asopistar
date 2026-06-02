@@ -872,3 +872,48 @@ INSERT INTO negocio.cliente (
     'Av. Principal #7-90', 'Tibú', 'Norte de Santander',
     2000000.00, 'ACTIVO'
 );
+
+
+
+------------------ CREACION DEL MODULO PUNTOS DE VENTA --------------------
+
+-- ============================================================
+--  MIGRACIÓN: Expandir tabla negocio.punto_venta
+--  Ejecutar en pgAdmin o psql ANTES de arrancar el backend
+--  con las nuevas entidades.
+--  Es seguro: solo agrega columnas con DEFAULT / nullable.
+-- ============================================================
+
+-- 1. Corregir el typo en la columna "ciudadd" → "ciudad"
+ALTER TABLE negocio.punto_venta
+    RENAME COLUMN ciudadd TO ciudad;
+
+-- 2. Agregar columnas nuevas (todas nullable o con DEFAULT para no romper datos existentes)
+ALTER TABLE negocio.punto_venta
+    ADD COLUMN IF NOT EXISTS codigo             VARCHAR(15),
+    ADD COLUMN IF NOT EXISTS tipo               VARCHAR(20)  DEFAULT 'PROPIO',
+    ADD COLUMN IF NOT EXISTS departamento       VARCHAR(40),
+    ADD COLUMN IF NOT EXISTS responsable        VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS cargo_responsable  VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS telefono           VARCHAR(15),
+    ADD COLUMN IF NOT EXISTS correo             VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS fecha_apertura     DATE,
+    ADD COLUMN IF NOT EXISTS observaciones      VARCHAR(200),
+    ADD COLUMN IF NOT EXISTS estado             VARCHAR(20)  DEFAULT 'ACTIVO',
+    ADD COLUMN IF NOT EXISTS fecha_creacion     TIMESTAMP    DEFAULT NOW();
+
+-- 3. Migrar la columna "activo" a "estado" para los registros ya existentes
+UPDATE negocio.punto_venta
+SET estado = CASE WHEN activo = TRUE THEN 'ACTIVO' ELSE 'INACTIVO' END
+WHERE estado IS NULL OR estado = 'ACTIVO';
+
+-- 4. Asegurarse de que todos los registros existentes tengan fecha_creacion
+UPDATE negocio.punto_venta
+SET fecha_creacion = NOW()
+WHERE fecha_creacion IS NULL;
+
+-- Verificación rápida
+SELECT id_punto, codigo, nombre, tipo, ciudad, departamento,
+       responsable, estado, fecha_creacion
+FROM negocio.punto_venta
+LIMIT 5;
