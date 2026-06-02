@@ -1,27 +1,19 @@
 package com.config.spring.asopistar.asopistar_backend.dto.request;
 
-import lombok.*;
 import jakarta.validation.constraints.*;
-import java.math.BigDecimal;
- 
+import lombok.*;
+
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class DetalleVentaInsumoRequestDTO {
- 
-    @NotNull(message = "La venta es obligatoria")
-    private Integer idVentaInsumo;
- 
+
     @NotNull(message = "El insumo es obligatorio")
     private Integer idInsumo;
- 
-    @NotNull
+
+    @NotNull(message = "La cantidad es obligatoria")
     @Min(value = 1, message = "La cantidad debe ser mayor a 0")
     private Integer cantidad;
- 
-    @NotNull
-    @DecimalMin(value = "0.01")
-    private BigDecimal precioUnitario;
- 
-    @NotNull
-    @DecimalMin(value = "0.01")
-    private BigDecimal subtotal;
+
+    // precioUnitario viene del insumo; el frontend puede confirmarlo
+    // pero el servicio siempre lo toma del registro del insumo para evitar
+    // manipulaciones. Se ignora si se envía.
 }

@@ -1,4 +1,4 @@
-package com.config.spring.asopistar.asopistar_backend.service.impl;
+package com.config.spring.asopistar.asopistar_backend.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

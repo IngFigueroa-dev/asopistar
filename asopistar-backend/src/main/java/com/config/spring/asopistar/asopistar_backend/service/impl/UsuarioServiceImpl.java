@@ -6,6 +6,7 @@ import com.config.spring.asopistar.asopistar_backend.entity.*;
 import com.config.spring.asopistar.asopistar_backend.exception.BusinessException;
 import com.config.spring.asopistar.asopistar_backend.exception.ResourceNotFoundException;
 import com.config.spring.asopistar.asopistar_backend.repository.*;
+import com.config.spring.asopistar.asopistar_backend.service.EmailService;
 import com.config.spring.asopistar.asopistar_backend.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

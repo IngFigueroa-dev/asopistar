@@ -124,11 +124,31 @@ public class SecurityConfig {
                 .requestMatchers("/ingresos/**")
                     .hasAnyAuthority(ADMIN, "ROLE_CONTADORA", "ROLE_GERENTE_COMERCIAL")
 
-                // ── INSUMOS ──────────────────────────────────────────────────
-                .requestMatchers("/insumos/**")
+                /// ── INSUMOS ──────────────────────────────────────────────────
+                .requestMatchers(HttpMethod.GET, "/insumos/**")
+                    .hasAnyAuthority(ADMIN,
+                        "ROLE_VENDEDOR_INSUMOS", "ROLE_CONTADORA",
+                        "ROLE_GERENTE_PLANTA", "ROLE_PRODUCTOR")
+                .requestMatchers(HttpMethod.POST, "/insumos/**")
                     .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
-                .requestMatchers("/ventas-insumo/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS", "ROLE_PRODUCTOR")
+                .requestMatchers(HttpMethod.PUT, "/insumos/**")
+                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
+                .requestMatchers(HttpMethod.PATCH, "/insumos/**")
+                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
+                .requestMatchers(HttpMethod.GET, "/ventas-insumo/**")
+                    .hasAnyAuthority(ADMIN,
+                        "ROLE_VENDEDOR_INSUMOS", "ROLE_CONTADORA", "ROLE_PRODUCTOR")
+                .requestMatchers(HttpMethod.POST, "/ventas-insumo/**")
+                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
+                .requestMatchers(HttpMethod.PATCH, "/ventas-insumo/**")
+                    .hasAnyAuthority(ADMIN, "ROLE_CONTADORA")
+                .requestMatchers(HttpMethod.GET, "/movimientos-insumo/**")
+                    .hasAnyAuthority(ADMIN,
+                        "ROLE_VENDEDOR_INSUMOS", "ROLE_CONTADORA")
+                .requestMatchers(HttpMethod.POST, "/movimientos-insumo/**")
+                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
+
+
 
                 // ── REPORTES ─────────────────────────────────────────────────
                 // El acceso fino por rol se controla con @PreAuthorize en el controlador
