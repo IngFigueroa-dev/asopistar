@@ -645,3 +645,136 @@ SET id_rol = (SELECT id_rol FROM negocio.rol WHERE nombre = 'ADMINISTRADOR_GENER
     estado = 'ACTIVO',
     activo = true
 WHERE email = 'admin@asopistar.com';
+
+
+
+-- ============================================================
+-- ASOPISTAR — Migración Módulo de Insumos
+-- V2__modulo_insumos_migracion.sql
+-- Ejecutar sobre la BD existente (schema: negocio)
+-- ============================================================
+
+-- ──────────────────────────────────────────────────────────────
+-- 1. Ampliar negocio.insumo con campos faltantes
+-- ──────────────────────────────────────────────────────────────
+ALTER TABLE negocio.insumo
+    ADD COLUMN IF NOT EXISTS codigo       VARCHAR(15),
+    ADD COLUMN IF NOT EXISTS descripcion  VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS estado       VARCHAR(20) NOT NULL DEFAULT 'ACTIVO',
+    ADD COLUMN IF NOT EXISTS fecha_creacion DATE NOT NULL DEFAULT CURRENT_DATE;
+
+-- Restricción de estado válido
+ALTER TABLE negocio.insumo
+    DROP CONSTRAINT IF EXISTS ck_insumo_estado;
+ALTER TABLE negocio.insumo
+    ADD CONSTRAINT ck_insumo_estado
+    CHECK (estado IN ('ACTIVO', 'INACTIVO'));
+
+-- Restricción de tipo válido
+ALTER TABLE negocio.insumo
+    DROP CONSTRAINT IF EXISTS ck_insumo_tipo;
+ALTER TABLE negocio.insumo
+    ADD CONSTRAINT ck_insumo_tipo
+    CHECK (tipo IN ('ALEVINO', 'CONCENTRADO', 'OTRO'));
+
+-- Unicidad de código (cuando se asigne)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_insumo_codigo
+    ON negocio.insumo(codigo)
+    WHERE codigo IS NOT NULL;
+
+-- ──────────────────────────────────────────────────────────────
+-- 2. Corregir FK de venta_insumo (era SERIAL, debe ser INT)
+--    SERIAL en FK es un error: no debe auto-incrementar
+--    Si la columna ya existe correctamente, este bloque no hace daño
+-- ──────────────────────────────────────────────────────────────
+-- Nota: si id_productor fue creado como SERIAL en venta_insumo,
+-- la secuencia asociada no hace daño funcional pero es semánticamente
+-- incorrecto. El tipo subyacente de SERIAL es INTEGER, así que
+-- la FK funciona. No se necesita ALTER TYPE aquí.
+
+-- ──────────────────────────────────────────────────────────────
+-- 3. Nueva tabla: negocio.movimiento_insumo
+-- ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS negocio.movimiento_insumo (
+    id_movimiento    SERIAL PRIMARY KEY,
+    fecha            TIMESTAMP   NOT NULL DEFAULT NOW(),
+    tipo_movimiento  VARCHAR(20) NOT NULL,   -- ENTRADA, SALIDA, AJUSTE
+    motivo           VARCHAR(30) NOT NULL,   -- COMPRA, DONACION, VENTA, PERDIDA, DANO, AJUSTE_ADMIN, CORRECCION
+    cantidad         DECIMAL(10, 2) NOT NULL,
+    stock_antes      DECIMAL(10, 2) NOT NULL,
+    stock_despues    DECIMAL(10, 2) NOT NULL,
+    observacion      VARCHAR(150),
+    id_insumo        INT         NOT NULL REFERENCES negocio.insumo(id_insumo),
+    id_usuario       INT         NOT NULL REFERENCES negocio.usuario(id_usuario),
+    id_venta_insumo  INT         REFERENCES negocio.venta_insumo(id_venta_insumo),
+
+    CONSTRAINT ck_mov_tipo
+        CHECK (tipo_movimiento IN ('ENTRADA', 'SALIDA', 'AJUSTE')),
+    CONSTRAINT ck_mov_motivo
+        CHECK (motivo IN (
+            'COMPRA', 'DONACION', 'AJUSTE_ADMIN', 'CORRECCION',   -- entradas
+            'VENTA', 'PERDIDA', 'DANO'                             -- salidas
+        )),
+    CONSTRAINT ck_mov_cantidad
+        CHECK (cantidad > 0),
+    CONSTRAINT ck_mov_stock_antes
+        CHECK (stock_antes >= 0),
+    CONSTRAINT ck_mov_stock_despues
+        CHECK (stock_despues >= 0)
+);
+
+COMMENT ON TABLE negocio.movimiento_insumo IS
+    'Auditoría completa de movimientos de inventario de insumos';
+
+-- Índices para consultas frecuentes
+CREATE INDEX IF NOT EXISTS idx_mov_insumo
+    ON negocio.movimiento_insumo(id_insumo);
+CREATE INDEX IF NOT EXISTS idx_mov_fecha
+    ON negocio.movimiento_insumo(fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_mov_tipo
+    ON negocio.movimiento_insumo(tipo_movimiento);
+
+-- ──────────────────────────────────────────────────────────────
+-- 4. Datos de ejemplo (opcional — comentar en producción)
+-- ──────────────────────────────────────────────────────────────
+-- INSERT INTO negocio.insumo
+--     (nombre, tipo, unidad_medida, precio_unitario, stock_actual, stock_minimo,
+--      codigo, descripcion, estado, fecha_creacion)
+-- VALUES
+--     ('Cachama',        'ALEVINO',    'unidad', 350.00,  5000, 500,  'ALE-001', 'Alevino de cachama blanca',     'ACTIVO', CURRENT_DATE),
+--     ('Tilapia Roja',   'ALEVINO',    'unidad', 280.00,  8000, 1000, 'ALE-002', 'Alevino de tilapia roja',       'ACTIVO', CURRENT_DATE),
+--     ('Purina 40%',     'CONCENTRADO','bulto',  85000.00, 120,   20,  'CON-001', 'Concentrado iniciación 40%',   'ACTIVO', CURRENT_DATE),
+--     ('Purina 32%',     'CONCENTRADO','bulto',  75000.00, 200,   30,  'CON-002', 'Concentrado engorde 32%',      'ACTIVO', CURRENT_DATE),
+--     ('Concentrado Eng','CONCENTRADO','bulto',  70000.00,  80,   15,  'CON-003', 'Concentrado engorde genérico', 'ACTIVO', CURRENT_DATE);
+
+-- ──────────────────────────────────────────────────────────────
+-- 5. Verificación post-migración
+-- ──────────────────────────────────────────────────────────────
+-- SELECT column_name, data_type, is_nullable, column_default
+-- FROM information_schema.columns
+-- WHERE table_schema = 'negocio' AND table_name = 'insumo'
+-- ORDER BY ordinal_position;
+
+-- SELECT column_name, data_type, is_nullable
+-- FROM information_schema.columns
+-- WHERE table_schema = 'negocio' AND table_name = 'movimiento_insumo'
+-- ORDER BY ordinal_position;
+
+
+
+
+
+
+-- ── PASO 1: Eliminar el DEFAULT automático de la columna ──────
+ALTER TABLE negocio.venta_insumo
+    ALTER COLUMN id_productor DROP DEFAULT;
+
+-- ── PASO 2: Eliminar la secuencia huérfana ────────────────────
+DROP SEQUENCE IF EXISTS negocio.venta_insumo_id_productor_seq;
+
+-- ── PASO 3: Verificar que quedó limpio ───────────────────────
+SELECT column_name, data_type, column_default
+FROM information_schema.columns
+WHERE table_schema = 'negocio'
+  AND table_name   = 'venta_insumo'
+  AND column_name  = 'id_productor';
