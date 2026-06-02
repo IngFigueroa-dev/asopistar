@@ -23,6 +23,7 @@ import Logistica     from './pages/logistica/Logistica'
 import Pagos         from './pages/pagos/Pagos'
 import Reportes      from './pages/reportes/Reportes'
 import Configuracion from './pages/configuracion/Configuracion'
+import Insumos from './pages/insumos/Insumos'
 
 // Admin
 import SolicitudesAcceso from './pages/admin/SolicitudesAcceso'
@@ -52,6 +53,7 @@ function App() {
                   <Route path="/calendario"    element={<Calendario />} />
                   <Route path="/recepciones"   element={<Recepciones />} />
                   <Route path="/procesamiento" element={<Procesamiento />} />
+                  <Route path="/insumos"       element={<Insumos />} />
                   <Route path="/almacenamiento" element={<Almacenamiento />} />
                   <Route path="/logistica"     element={<Logistica />} />
                   <Route path="/pagos"         element={<Pagos />} />
