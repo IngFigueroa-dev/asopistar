@@ -25,6 +25,7 @@ import Reportes      from './pages/reportes/Reportes'
 import Configuracion from './pages/configuracion/Configuracion'
 import Insumos       from './pages/insumos/Insumos'
 import Clientes      from './pages/clientes/Clientes'   // ← NUEVO
+import PuntosDeVenta from './pages/puntosDeVenta/PuntosDeVenta'
 
 // Admin
 import SolicitudesAcceso from './pages/admin/SolicitudesAcceso'
@@ -57,7 +58,8 @@ function App() {
                   <Route path="/insumos"       element={<Insumos />} />
                   <Route path="/almacenamiento" element={<Almacenamiento />} />
                   <Route path="/logistica"     element={<Logistica />} />
-                  <Route path="/clientes"      element={<Clientes />} />   {/* ← NUEVO */}
+                  <Route path="/clientes"      element={<Clientes />} /> 
+                  <Route path="/puntos-venta" element={<PuntosDeVenta />} />  
                   <Route path="/pagos"         element={<Pagos />} />
                   <Route path="/reportes"      element={<Reportes />} />
                   <Route path="/configuracion" element={<Configuracion />} />
