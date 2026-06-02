@@ -72,10 +72,8 @@ public class ReporteServiceImpl implements ReporteService {
         List<ReporteRecepcionResponseDTO> resultado = new ArrayList<>();
 
         for (Recepcion r : todas) {
-            // Filtro de fechas
             if (r.getFechaHora().isBefore(inicio) || r.getFechaHora().isAfter(fin)) continue;
 
-            // Filtro productor
             String nombreProd = buildNombreProductor(
                     r.getProductor().getNombre1(),
                     r.getProductor().getNombre2(),
@@ -86,8 +84,6 @@ public class ReporteServiceImpl implements ReporteService {
                 if (!nombreProd.toLowerCase().contains(nombreProductor.toLowerCase())) continue;
             }
 
-            // El lote se busca desde el propio repositorio porque la relación es
-            // inversa: LoteCuartoFrio -> Recepcion (no al revés en la entidad)
             String codigoLote = "Sin lote";
             List<LoteCuartoFrio> lotes = loteCuartoFrioRepository
                     .findByRecepcionIdRecepcion(r.getIdRecepcion());
@@ -95,8 +91,6 @@ public class ReporteServiceImpl implements ReporteService {
                 codigoLote = lotes.get(0).getCodigoLote();
             }
 
-            // El nombre del método en tu entidad puede ser getTurnoPesca()
-            // Ajusta aquí si el getter se llama diferente
             String estadoTurno = "—";
             if (r.getTurnoPesca() != null) {
                 estadoTurno = r.getTurnoPesca().getEstado();
@@ -132,11 +126,8 @@ public class ReporteServiceImpl implements ReporteService {
         List<ReporteProduccionResponseDTO> resultado = new ArrayList<>();
 
         for (Siembra s : todas) {
-            // Filtro fechas
             if (s.getFechaSiembra().isBefore(inicio) || s.getFechaSiembra().isAfter(fin)) continue;
-            // Filtro estado
             if (estado != null && !estado.isBlank() && !s.getEstado().equals(estado)) continue;
-            // Filtro especie
             if (nombreEspecie != null && !nombreEspecie.isBlank()) {
                 if (!s.getEspecie().getNombre().toLowerCase().contains(nombreEspecie.toLowerCase())) continue;
             }
@@ -195,9 +186,7 @@ public class ReporteServiceImpl implements ReporteService {
         List<ReporteLoteResponseDTO> resultado = new ArrayList<>();
 
         for (LoteCuartoFrio l : todos) {
-            // Filtro fechas
             if (l.getFechaIngreso().isBefore(inicio) || l.getFechaIngreso().isAfter(fin)) continue;
-            // Filtro estado
             if (estado != null && !estado.isBlank()) {
                 boolean disponible = Boolean.TRUE.equals(l.getEstado());
                 boolean buscaDisponible = "DISPONIBLE".equals(estado);
@@ -240,17 +229,15 @@ public class ReporteServiceImpl implements ReporteService {
         List<ReporteEnvioResponseDTO> resultado = new ArrayList<>();
 
         for (Envio e : todos) {
-            // Filtro fechas
             if (e.getFechaEnvio().isBefore(inicio) || e.getFechaEnvio().isAfter(fin)) continue;
-            // Filtro estado
             if (estado != null && !estado.isBlank() && !e.getEstado().equals(estado)) continue;
-            // Filtro tipo destino
             if (tipoDestino != null && !tipoDestino.isBlank()
                     && !e.getTipoDestino().equals(tipoDestino)) continue;
 
+            // ── CORRECCIÓN: Cliente ahora es B2B, usar razonSocial ──────────
             String nombreCliente = null;
             if (e.getCliente() != null) {
-                nombreCliente = e.getCliente().getNombre1() + " " + e.getCliente().getApellido1();
+                nombreCliente = e.getCliente().getRazonSocial();
             }
 
             String nombrePunto = null;
@@ -292,11 +279,9 @@ public class ReporteServiceImpl implements ReporteService {
         List<ReportePagoResponseDTO> resultado = new ArrayList<>();
 
         for (PagoProductor p : todos) {
-            // Filtro fechas
             if (p.getFechaPago().isBefore(inicio) || p.getFechaPago().isAfter(fin)) continue;
-            // Filtro estado
             if (estado != null && !estado.isBlank() && !p.getEstado().equals(estado)) continue;
-            // Filtro productor
+
             String nombreProd = buildNombreProductor(
                     p.getProductor().getNombre1(),
                     p.getProductor().getNombre2(),
@@ -340,11 +325,8 @@ public class ReporteServiceImpl implements ReporteService {
         List<ReporteTurnoResponseDTO> resultado = new ArrayList<>();
 
         for (TurnoPesca t : todos) {
-            // Filtro fechas
             if (t.getFechaProgramada().isBefore(inicio) || t.getFechaProgramada().isAfter(fin)) continue;
-            // Filtro estado
             if (estado != null && !estado.isBlank() && !t.getEstado().equals(estado)) continue;
-            // Filtro prioridad
             if (tipoPrioridad != null && !tipoPrioridad.isBlank()
                     && !tipoPrioridad.equals(t.getTipoPrioridad())) continue;
 

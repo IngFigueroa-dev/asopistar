@@ -88,6 +88,12 @@ public class EnvioServiceImpl implements EnvioService {
             Cliente cliente = clienteRepository.findById(dto.getIdCliente())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Cliente no encontrado: " + dto.getIdCliente()));
+            // ── Validar que el cliente esté ACTIVO ──────────────────────────
+            if (!"ACTIVO".equals(cliente.getEstado())) {
+                throw new BusinessException(
+                        "El cliente " + cliente.getRazonSocial() +
+                        " no está activo. Estado: " + cliente.getEstado());
+            }
             envio.setCliente(cliente);
 
         } else if ("PUNTO_VENTA".equalsIgnoreCase(dto.getTipoDestino())) {
@@ -109,7 +115,6 @@ public class EnvioServiceImpl implements EnvioService {
             detalle.setKilos(lote.getKilos());
             detalleRepository.save(detalle);
 
-            // Marcar lote despachado
             lote.setEstado(false);
             lote.setEstadoDecision("DESPACHADO");
             lote.setEnvio(envioGuardado);
@@ -164,6 +169,12 @@ public class EnvioServiceImpl implements EnvioService {
                 })
                 .collect(Collectors.toList());
 
+        // ── CORRECCIÓN: Cliente B2B → usar razonSocial ──────────────────────
+        String nombreCliente = null;
+        if (e.getCliente() != null) {
+            nombreCliente = e.getCliente().getRazonSocial();
+        }
+
         return EnvioResponseDTO.builder()
                 .idEnvio(e.getIdEnvio())
                 .fechaEnvio(e.getFechaEnvio())
@@ -172,8 +183,7 @@ public class EnvioServiceImpl implements EnvioService {
                 .estado(e.getEstado())
                 .observaciones(e.getObservaciones())
                 .idCliente(e.getCliente() != null ? e.getCliente().getIdCliente() : null)
-                .nombreCliente(e.getCliente() != null
-                        ? e.getCliente().getNombre1() + " " + e.getCliente().getApellido1() : null)
+                .nombreCliente(nombreCliente)
                 .idPunto(e.getPuntoVenta() != null ? e.getPuntoVenta().getIdPunto() : null)
                 .nombrePunto(e.getPuntoVenta() != null ? e.getPuntoVenta().getNombre() : null)
                 .totalKilos(totalKilos)
