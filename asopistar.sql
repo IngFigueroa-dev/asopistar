@@ -917,3 +917,77 @@ SELECT id_punto, codigo, nombre, tipo, ciudad, departamento,
        responsable, estado, fecha_creacion
 FROM negocio.punto_venta
 LIMIT 5;
+
+
+
+
+------------------------- CREACION DEL MODULO ENVIO --------------------------------
+
+-- ============================================================
+--  MIGRACIÓN: Expandir tabla negocio.envio
+--  Ejecutar en pgAdmin ANTES de arrancar el backend actualizado.
+--  Solo agrega columnas nuevas — no toca nada existente.
+-- ============================================================
+
+-- 1. Agregar columnas nuevas al envío
+ALTER TABLE negocio.envio
+    ADD COLUMN IF NOT EXISTS codigo_guia           VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS fecha_preparacion     TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS fecha_salida          TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS fecha_entrega_estimada DATE,
+    ADD COLUMN IF NOT EXISTS fecha_entrega_real     TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS empresa_transportadora VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS nombre_conductor       VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS telefono_conductor     VARCHAR(15),
+    ADD COLUMN IF NOT EXISTS placa_vehiculo         VARCHAR(10),
+    ADD COLUMN IF NOT EXISTS tipo_vehiculo          VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS observacion_entrega    VARCHAR(200),
+    ADD COLUMN IF NOT EXISTS nombre_receptor        VARCHAR(60);
+
+-- 2. Poblar fecha_preparacion con fecha_envio para registros existentes
+UPDATE negocio.envio
+SET fecha_preparacion = fecha_envio
+WHERE fecha_preparacion IS NULL;
+
+-- 3. Agregar estado CANCELADO al check constraint si existe
+--    (Si no hay constraint en el estado, este bloque no aplica)
+-- ALTER TABLE negocio.envio DROP CONSTRAINT IF EXISTS envio_estado_check;
+
+-- 4. Generar códigos de guía para los envíos existentes que no tienen
+UPDATE negocio.envio
+SET codigo_guia = CONCAT(
+    'GUIA-',
+    TO_CHAR(COALESCE(fecha_envio, NOW()), 'YYYY'),
+    '-',
+    LPAD(id_envio::TEXT, 5, '0')
+)
+WHERE codigo_guia IS NULL;
+
+-- 5. Crear índice único para codigo_guia
+CREATE UNIQUE INDEX IF NOT EXISTS idx_envio_codigo_guia
+    ON negocio.envio(codigo_guia);
+
+-- Verificación
+SELECT id_envio, codigo_guia, estado, fecha_preparacion,
+       empresa_transportadora, nombre_conductor
+FROM negocio.envio
+ORDER BY id_envio
+LIMIT 10;
+
+
+----Correción de null en id_cliente y id_punto ---------
+
+-- Corregir columnas de destino para que sean nullable
+-- Solo una de las dos tendrá valor según el tipo_destino
+ALTER TABLE negocio.envio
+    ALTER COLUMN id_punto   DROP NOT NULL;
+
+ALTER TABLE negocio.envio
+    ALTER COLUMN id_cliente DROP NOT NULL;
+
+-- Verificar
+SELECT column_name, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'negocio'
+  AND table_name   = 'envio'
+  AND column_name  IN ('id_punto', 'id_cliente');
