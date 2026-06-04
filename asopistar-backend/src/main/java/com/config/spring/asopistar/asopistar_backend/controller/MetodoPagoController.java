@@ -8,13 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Controlador REST para Métodos de Pago.
- *
- * Rutas:
- *   GET /metodos-pago           → Todos los métodos activos
- *   GET /metodos-pago/{id}      → Detalle de un método
- */
 @RestController
 @RequestMapping("/metodos-pago")
 public class MetodoPagoController {
@@ -26,13 +19,23 @@ public class MetodoPagoController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_CONTADORA')")
+    @PreAuthorize("hasAnyAuthority(" +
+        "'ROLE_ADMINISTRADOR_GENERAL'," +
+        "'ROLE_CONTADORA'," +
+        "'ROLE_GERENTE_COMERCIAL'," +
+        "'ROLE_GERENTE_PLANTA'," +
+        "'ROLE_SECRETARIA')")
     public ResponseEntity<List<MetodoPago>> listarActivos() {
         return ResponseEntity.ok(repo.findByEstado("ACTIVO"));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_CONTADORA')")
+    @PreAuthorize("hasAnyAuthority(" +
+        "'ROLE_ADMINISTRADOR_GENERAL'," +
+        "'ROLE_CONTADORA'," +
+        "'ROLE_GERENTE_COMERCIAL'," +
+        "'ROLE_GERENTE_PLANTA'," +
+        "'ROLE_SECRETARIA')")
     public ResponseEntity<MetodoPago> obtenerPorId(@PathVariable Integer id) {
         return repo.findById(id)
                 .map(ResponseEntity::ok)

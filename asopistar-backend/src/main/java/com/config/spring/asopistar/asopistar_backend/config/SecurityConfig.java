@@ -21,15 +21,26 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity   // Habilita @PreAuthorize en los controladores
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsServiceImpl  userDetailsService;
 
-    // Constante para el rol admin (evita strings dispersos)
-    private static final String ADMIN = "ROLE_ADMINISTRADOR_GENERAL";
+    // ── Constantes de rol ─────────────────────────────────────────────────────
+    // Usuario.java construye la authority como: "ROLE_" + rol.getNombre()
+    // La BD almacena los nombres SIN prefijo: ADMINISTRADOR_GENERAL, CONTADORA, etc.
+    // Por tanto Spring Security recibe: ROLE_ADMINISTRADOR_GENERAL, ROLE_CONTADORA, etc.
+    private static final String ADMIN             = "ROLE_ADMINISTRADOR_GENERAL";
+    private static final String GERENTE_PLANTA    = "ROLE_GERENTE_PLANTA";
+    private static final String GERENTE_COMERCIAL = "ROLE_GERENTE_COMERCIAL";
+    private static final String CONTADORA         = "ROLE_CONTADORA";
+    private static final String BIOLOGO           = "ROLE_BIOLOGO";
+    private static final String SECRETARIA        = "ROLE_SECRETARIA";
+    private static final String VENDEDOR_INSUMOS  = "ROLE_VENDEDOR_INSUMOS";
+    private static final String PRODUCTOR         = "ROLE_PRODUCTOR";
+    private static final String CUARTO_FRIO       = "ROLE_PERSONAL_CUARTO_FRIO";
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -39,7 +50,7 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
 
-                // ── Infraestructura ──────────────────────────────────────────
+                // ── Infraestructura ───────────────────────────────────────────
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/error").permitAll()
 
@@ -51,113 +62,102 @@ public class SecurityConfig {
                     "/auth/reenviar-verificacion"
                 ).permitAll()
 
-                // ── Gestión de usuarios y roles (solo ADMIN) ─────────────────
+                // ── Gestión de usuarios y roles ───────────────────────────────
                 .requestMatchers("/roles/**").hasAuthority(ADMIN)
+                .requestMatchers("/usuarios/me").authenticated()
                 .requestMatchers("/usuarios/**").hasAuthority(ADMIN)
 
-                // ── Perfil propio (cualquier usuario autenticado) ─────────────
-                // El endpoint /usuarios/me tiene su propio @PreAuthorize
-                // pero necesita estar autenticado mínimo
-                .requestMatchers("/usuarios/me").authenticated()
-
-                // ── PRODUCTORES Y ESTANQUES ──────────────────────────────────
+                // ── Productores y estanques ───────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/productores/**")
-                    .hasAnyAuthority(ADMIN,
-                        "ROLE_GERENTE_PLANTA", "ROLE_BIOLOGO",
-                        "ROLE_GERENTE_COMERCIAL", "ROLE_CONTADORA",
-                        "ROLE_SECRETARIA", "ROLE_VENDEDOR_INSUMOS")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, BIOLOGO,
+                        GERENTE_COMERCIAL, CONTADORA, SECRETARIA, VENDEDOR_INSUMOS)
                 .requestMatchers(HttpMethod.POST, "/productores/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_SECRETARIA")
+                    .hasAnyAuthority(ADMIN, SECRETARIA)
                 .requestMatchers(HttpMethod.PUT, "/productores/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_SECRETARIA")
+                    .hasAnyAuthority(ADMIN, SECRETARIA)
                 .requestMatchers("/estanques/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_BIOLOGO", "ROLE_GERENTE_PLANTA")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA)
                 .requestMatchers("/especies/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_BIOLOGO", "ROLE_GERENTE_PLANTA")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA)
 
-                // ── BIÓLOGO ──────────────────────────────────────────────────
+                // ── Biólogo ───────────────────────────────────────────────────
                 .requestMatchers(HttpMethod.POST, "/seguimientos/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_BIOLOGO")
+                    .hasAnyAuthority(ADMIN, BIOLOGO)
                 .requestMatchers(HttpMethod.GET, "/siembras/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_BIOLOGO",
-                        "ROLE_GERENTE_PLANTA", "ROLE_GERENTE_COMERCIAL")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, GERENTE_COMERCIAL)
                 .requestMatchers(HttpMethod.POST, "/siembras/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_PLANTA")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
 
-                // ── GERENTE_PLANTA ───────────────────────────────────────────
+                // ── Gerente de planta ─────────────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/recepciones/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_PLANTA", "ROLE_CONTADORA",
-                        "ROLE_SECRETARIA")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CONTADORA, SECRETARIA)
                 .requestMatchers(HttpMethod.POST, "/recepciones/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_PLANTA")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
                 .requestMatchers("/turnos-pesca/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_PLANTA", "ROLE_PRODUCTOR")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, PRODUCTOR)
                 .requestMatchers("/procesamientos/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_PLANTA", "ROLE_PERSONAL_CUARTO_FRIO")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO)
                 .requestMatchers("/lotes-cuarto-frio/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_PLANTA", "ROLE_PERSONAL_CUARTO_FRIO")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO)
 
-                // ── CLIENTES Y PUNTOS DE VENTA ───────────────────────────────
+                // ── Clientes y puntos de venta ────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/clientes/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_COMERCIAL", "ROLE_GERENTE_PLANTA")
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA)
                 .requestMatchers(HttpMethod.POST, "/clientes/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_COMERCIAL")
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
                 .requestMatchers(HttpMethod.PUT, "/clientes/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_COMERCIAL")
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
                 .requestMatchers(HttpMethod.GET, "/puntos-venta/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_COMERCIAL", "ROLE_GERENTE_PLANTA")
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA)
                 .requestMatchers(HttpMethod.POST, "/puntos-venta/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_COMERCIAL")
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
                 .requestMatchers(HttpMethod.PUT, "/puntos-venta/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_COMERCIAL")
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
 
-                // ── ENVÍOS (Logística) ───────────────────────────────────────
+                // ── Logística ─────────────────────────────────────────────────
                 .requestMatchers("/envios/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_GERENTE_COMERCIAL", "ROLE_GERENTE_PLANTA",
-                        "ROLE_SECRETARIA")
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA, SECRETARIA)
 
-                // ── FINANZAS ─────────────────────────────────────────────────
+                // ── Finanzas ──────────────────────────────────────────────────
                 .requestMatchers("/pagos-productor/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_CONTADORA")
+                    .hasAnyAuthority(ADMIN, CONTADORA)
+
+                // metodos-pago: usado en modales de Pagos e Ingresos
+                // Se amplía a todos los roles que usan esos módulos
                 .requestMatchers("/metodos-pago/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_CONTADORA")
+                    .hasAnyAuthority(ADMIN, CONTADORA, GERENTE_COMERCIAL,
+                        GERENTE_PLANTA, SECRETARIA)
+
                 .requestMatchers("/ingresos/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_CONTADORA", "ROLE_GERENTE_COMERCIAL")
+                    .hasAnyAuthority(ADMIN, CONTADORA, GERENTE_COMERCIAL)
 
-                /// ── INSUMOS ──────────────────────────────────────────────────
+                // ── Insumos ───────────────────────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/insumos/**")
-                    .hasAnyAuthority(ADMIN,
-                        "ROLE_VENDEDOR_INSUMOS", "ROLE_CONTADORA",
-                        "ROLE_GERENTE_PLANTA", "ROLE_PRODUCTOR")
+                    .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS, CONTADORA,
+                        GERENTE_PLANTA, PRODUCTOR)
                 .requestMatchers(HttpMethod.POST, "/insumos/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
+                    .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS)
                 .requestMatchers(HttpMethod.PUT, "/insumos/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
+                    .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS)
                 .requestMatchers(HttpMethod.PATCH, "/insumos/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
+                    .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS)
                 .requestMatchers(HttpMethod.GET, "/ventas-insumo/**")
-                    .hasAnyAuthority(ADMIN,
-                        "ROLE_VENDEDOR_INSUMOS", "ROLE_CONTADORA", "ROLE_PRODUCTOR")
+                    .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS, CONTADORA, PRODUCTOR)
                 .requestMatchers(HttpMethod.POST, "/ventas-insumo/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
+                    .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS)
                 .requestMatchers(HttpMethod.PATCH, "/ventas-insumo/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_CONTADORA")
+                    .hasAnyAuthority(ADMIN, CONTADORA)
                 .requestMatchers(HttpMethod.GET, "/movimientos-insumo/**")
-                    .hasAnyAuthority(ADMIN,
-                        "ROLE_VENDEDOR_INSUMOS", "ROLE_CONTADORA")
+                    .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS, CONTADORA)
                 .requestMatchers(HttpMethod.POST, "/movimientos-insumo/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_VENDEDOR_INSUMOS")
+                    .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS)
 
-
-
-                // ── REPORTES ─────────────────────────────────────────────────
-                // El acceso fino por rol se controla con @PreAuthorize en el controlador
+                // ── Reportes ──────────────────────────────────────────────────
                 .requestMatchers("/reportes/**")
-                    .hasAnyAuthority(ADMIN, "ROLE_CONTADORA",
-                        "ROLE_GERENTE_COMERCIAL", "ROLE_GERENTE_PLANTA",
-                        "ROLE_SECRETARIA", "ROLE_BIOLOGO")
+                    .hasAnyAuthority(ADMIN, CONTADORA, GERENTE_COMERCIAL,
+                        GERENTE_PLANTA, SECRETARIA, BIOLOGO)
 
-                // ── Resto: cualquier usuario autenticado ─────────────────────
+                // ── Resto: cualquier usuario autenticado ──────────────────────
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
