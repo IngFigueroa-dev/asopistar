@@ -991,3 +991,176 @@ FROM information_schema.columns
 WHERE table_schema = 'negocio'
   AND table_name   = 'envio'
   AND column_name  IN ('id_punto', 'id_cliente');
+
+
+
+
+--------------------------- CREACION DEL MODULO INGRESOS ASOCIADOS A VENTAS ----------
+
+-- ============================================================
+-- MIGRACIÓN: Módulo de Registro de Ingresos - ASOPISTAR
+-- Versión: V2
+-- Descripción: Amplía la tabla ingreso existente y crea la
+--              tabla pago_ingreso para historial de abonos.
+--
+-- ⚠️  IMPORTANTE: La tabla negocio.INGRESO ya existe.
+--     Solo se agregan columnas nuevas con ALTER TABLE.
+--     No se toca ninguna tabla existente.
+-- ============================================================
+
+-- ────────────────────────────────────────────────────────────
+-- 1. AMPLIAR TABLA INGRESO (ya existe, solo se añaden campos)
+-- ────────────────────────────────────────────────────────────
+
+-- Número de ingreso secuencial legible (ej: ING-2024-0001)
+ALTER TABLE negocio.ingreso
+    ADD COLUMN IF NOT EXISTS numero_ingreso   VARCHAR(20)    UNIQUE,
+    ADD COLUMN IF NOT EXISTS tipo_ingreso     VARCHAR(30),         -- VENTA_PESCADO | VENTA_ALEVINOS | VENTA_CONCENTRADO | OTRO
+    ADD COLUMN IF NOT EXISTS id_cliente       INT            REFERENCES negocio.cliente(id_cliente),
+    ADD COLUMN IF NOT EXISTS valor_total      DECIMAL(14,2)  NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS valor_pagado     DECIMAL(14,2)  NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS saldo_pendiente  DECIMAL(14,2)  NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS estado_pago      VARCHAR(20)    NOT NULL DEFAULT 'PENDIENTE', -- PENDIENTE | PARCIAL | PAGADO | ANULADO
+    ADD COLUMN IF NOT EXISTS referencia       VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS fecha_creacion   TIMESTAMP      DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS fecha_actualizacion TIMESTAMP;
+
+-- Actualizar las filas existentes para que tengan valores coherentes
+UPDATE negocio.ingreso
+SET
+    valor_total     = monto,
+    valor_pagado    = monto,
+    saldo_pendiente = 0,
+    estado_pago     = 'PAGADO',
+    tipo_ingreso    = tipo_origen,
+    fecha_creacion  = fecha
+WHERE numero_ingreso IS NULL;
+
+-- Generar numero_ingreso para registros existentes
+UPDATE negocio.ingreso
+SET numero_ingreso = 'ING-' || TO_CHAR(fecha, 'YYYY') || '-' || LPAD(id_ingreso::TEXT, 4, '0')
+WHERE numero_ingreso IS NULL;
+
+-- Hacer el campo NOT NULL ahora que todos tienen valor
+ALTER TABLE negocio.ingreso
+    ALTER COLUMN numero_ingreso SET NOT NULL;
+
+-- ────────────────────────────────────────────────────────────
+-- 2. NUEVA TABLA: pago_ingreso (historial de abonos)
+-- ────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS negocio.pago_ingreso (
+    id_pago_ingreso  SERIAL          PRIMARY KEY,
+    id_ingreso       INT             NOT NULL REFERENCES negocio.ingreso(id_ingreso),
+    fecha_pago       TIMESTAMP       NOT NULL DEFAULT NOW(),
+    valor_pago       DECIMAL(14,2)   NOT NULL,
+    id_metodo_pago   INT             NOT NULL REFERENCES negocio.metodo_pago(id_metodo_pago),
+    referencia       VARCHAR(60),
+    observaciones    VARCHAR(200),
+    registrado_por   VARCHAR(80),     -- email del usuario que registró
+    CONSTRAINT ck_valor_pago CHECK (valor_pago > 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pago_ingreso_ingreso ON negocio.pago_ingreso(id_ingreso);
+
+-- ────────────────────────────────────────────────────────────
+-- 3. ÍNDICES en ingreso para búsquedas frecuentes
+-- ────────────────────────────────────────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_ingreso_estado_pago  ON negocio.ingreso(estado_pago);
+CREATE INDEX IF NOT EXISTS idx_ingreso_tipo         ON negocio.ingreso(tipo_ingreso);
+CREATE INDEX IF NOT EXISTS idx_ingreso_cliente      ON negocio.ingreso(id_cliente);
+CREATE INDEX IF NOT EXISTS idx_ingreso_fecha        ON negocio.ingreso(fecha);
+
+-- ============================================================
+-- FIN DE MIGRACIÓN
+-- ============================================================
+
+
+-- ============================================================
+-- FIX: Permitir NULL en id_envio e id_venta_insumo de ingreso
+-- El schema original los declaró como SERIAL (NOT NULL implícito)
+-- pero son opcionales según el tipo de ingreso.
+-- ============================================================
+
+-- Quitar la constraint NOT NULL heredada del SERIAL original
+ALTER TABLE negocio.ingreso
+    ALTER COLUMN id_envio       DROP NOT NULL,
+    ALTER COLUMN id_venta_insumo DROP NOT NULL;
+
+-- Cambiar el tipo de SERIAL a INT para que acepten NULL correctamente
+ALTER TABLE negocio.ingreso
+    ALTER COLUMN id_envio        TYPE INT,
+    ALTER COLUMN id_venta_insumo TYPE INT;
+
+
+
+
+-- ============================================================
+-- FIX: Agregar prefijo ROLE_ a todos los roles en la BD
+--
+-- El problema: la BD tiene "ADMINISTRADOR_GENERAL" pero
+-- Spring Security espera "ROLE_ADMINISTRADOR_GENERAL".
+-- El JWT se genera desde los roles de la BD, así que
+-- si no tienen el prefijo, hasAuthority() siempre falla.
+--
+-- Ejecutar en pgAdmin contra la BD 'asopistar'.
+-- Es idempotente: no hace nada si ya tienen el prefijo.
+-- ============================================================
+
+-- Ver estado actual antes del fix:
+SELECT id_rol, nombre FROM negocio.rol ORDER BY id_rol;
+
+-- Aplicar prefijo ROLE_ solo a los que aún no lo tienen
+UPDATE negocio.rol
+SET nombre = 'ROLE_' || nombre
+WHERE nombre NOT LIKE 'ROLE_%';
+
+-- Verificar resultado:
+SELECT id_rol, nombre FROM negocio.rol ORDER BY id_rol;
+
+-- ⚠️  IMPORTANTE: después de ejecutar este script,
+-- cierra sesión en la app y vuelve a hacer login
+-- para que el JWT nuevo ya traiga los roles correctos.
+
+
+
+-- ============================================================
+-- DIAGNÓSTICO: verificar qué usuarios tienen qué rol
+-- ============================================================
+
+SELECT u.id_usuario, u.nombre1, u.apellido1, u.email, r.nombre AS rol
+FROM negocio.usuario u
+JOIN negocio.rol r ON u.id_rol = r.id_rol
+ORDER BY r.nombre;
+
+-- ============================================================
+-- Si algún usuario tiene id_rol = 1 (ROLE_ADMIN) y debería
+-- ser ADMINISTRADOR_GENERAL, actualízalo:
+-- ============================================================
+
+-- Ver cuántos usuarios tienen el rol ROLE_ADMIN (id_rol=1):
+SELECT COUNT(*) FROM negocio.usuario WHERE id_rol = 1;
+
+-- Si el resultado es > 0, cambia esos usuarios al rol correcto
+-- (reemplaza 2 por el id_rol de ROLE_ADMINISTRADOR_GENERAL según tu tabla):
+UPDATE negocio.usuario
+SET id_rol = (SELECT id_rol FROM negocio.rol WHERE nombre = 'ROLE_ADMINISTRADOR_GENERAL')
+WHERE id_rol = (SELECT id_rol FROM negocio.rol WHERE nombre = 'ROLE_ADMIN');
+
+-- Opcional: eliminar el rol ROLE_ADMIN si ya no tiene usuarios:
+DELETE FROM negocio.rol
+WHERE nombre = 'ROLE_ADMIN'
+  AND NOT EXISTS (SELECT 1 FROM negocio.usuario u WHERE u.id_rol = negocio.rol.id_rol);
+
+-- Verificar resultado final:
+SELECT r.id_rol, r.nombre, COUNT(u.id_usuario) AS usuarios
+FROM negocio.rol r
+LEFT JOIN negocio.usuario u ON u.id_rol = r.id_rol
+GROUP BY r.id_rol, r.nombre
+ORDER BY r.id_rol;
+
+
+UPDATE negocio.rol
+SET nombre = SUBSTRING(nombre FROM 6)  -- quita los primeros 5 caracteres "ROLE_"
+WHERE nombre LIKE 'ROLE_%';
