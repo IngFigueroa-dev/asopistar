@@ -15,93 +15,90 @@ import java.util.List;
 @RequestMapping("/reportes")
 public class ReporteController {
 
+    // Roles reales del sistema (tal como los almacena la BD y construye Usuario.java)
+    private static final String ADMIN             = "ROLE_ADMINISTRADOR_GENERAL";
+    private static final String GERENTE_PLANTA    = "ROLE_GERENTE_PLANTA";
+    private static final String GERENTE_COMERCIAL = "ROLE_GERENTE_COMERCIAL";
+    private static final String CONTADORA         = "ROLE_CONTADORA";
+    private static final String BIOLOGO           = "ROLE_BIOLOGO";
+    private static final String SECRETARIA        = "ROLE_SECRETARIA";
+
     @Autowired
     private ReporteService reporteService;
 
     // ─── GET /reportes/recepciones ────────────────────────────────────────────
-    // Roles: ADMIN, GERENTE_PLANTA, CONTADORA
     @GetMapping("/recepciones")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_GERENTE_PLANTA','ROLE_CONTADORA')")
+    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + GERENTE_PLANTA + "','" + CONTADORA + "','" + SECRETARIA + "')")
     public ResponseEntity<List<ReporteRecepcionResponseDTO>> getReporteRecepciones(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             @RequestParam(required = false) String nombreProductor) {
 
-        List<ReporteRecepcionResponseDTO> result = reporteService.getReporteRecepciones(
-                fechaInicio, fechaFin, nombreProductor);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(
+                reporteService.getReporteRecepciones(fechaInicio, fechaFin, nombreProductor));
     }
 
     // ─── GET /reportes/produccion ─────────────────────────────────────────────
-    // Roles: ADMIN, BIOLOGO, GERENTE_PLANTA
     @GetMapping("/produccion")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_BIOLOGO','ROLE_GERENTE_PLANTA')")
+    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + BIOLOGO + "','" + GERENTE_PLANTA + "')")
     public ResponseEntity<List<ReporteProduccionResponseDTO>> getReporteProduccion(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) String nombreEspecie) {
 
-        List<ReporteProduccionResponseDTO> result = reporteService.getReporteProduccion(
-                fechaInicio, fechaFin, estado, nombreEspecie);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(
+                reporteService.getReporteProduccion(fechaInicio, fechaFin, estado, nombreEspecie));
     }
 
     // ─── GET /reportes/lotes ──────────────────────────────────────────────────
-    // Roles: ADMIN, GERENTE_PLANTA, GERENTE_COMERCIAL
     @GetMapping("/lotes")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_GERENTE_PLANTA','ROLE_GERENTE_COMERCIAL')")
+    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + GERENTE_PLANTA + "','" + GERENTE_COMERCIAL + "')")
     public ResponseEntity<List<ReporteLoteResponseDTO>> getReporteLotes(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             @RequestParam(required = false) String estado) {
 
-        List<ReporteLoteResponseDTO> result = reporteService.getReporteLotes(fechaInicio, fechaFin, estado);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(
+                reporteService.getReporteLotes(fechaInicio, fechaFin, estado));
     }
 
     // ─── GET /reportes/envios ─────────────────────────────────────────────────
-    // Roles: ADMIN, GERENTE_COMERCIAL
     @GetMapping("/envios")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_GERENTE_COMERCIAL')")
+    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + GERENTE_COMERCIAL + "','" + GERENTE_PLANTA + "','" + SECRETARIA + "')")
     public ResponseEntity<List<ReporteEnvioResponseDTO>> getReporteEnvios(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) String tipoDestino) {
 
-        List<ReporteEnvioResponseDTO> result = reporteService.getReporteEnvios(
-                fechaInicio, fechaFin, estado, tipoDestino);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(
+                reporteService.getReporteEnvios(fechaInicio, fechaFin, estado, tipoDestino));
     }
 
     // ─── GET /reportes/pagos ──────────────────────────────────────────────────
-    // Roles: ADMIN, CONTADORA
     @GetMapping("/pagos")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_CONTADORA')")
+    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + CONTADORA + "')")
     public ResponseEntity<List<ReportePagoResponseDTO>> getReportePagos(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) String nombreProductor) {
 
-        List<ReportePagoResponseDTO> result = reporteService.getReportePagos(
-                fechaInicio, fechaFin, estado, nombreProductor);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(
+                reporteService.getReportePagos(fechaInicio, fechaFin, estado, nombreProductor));
     }
 
     // ─── GET /reportes/turnos ─────────────────────────────────────────────────
-    // Roles: ADMIN, GERENTE_PLANTA
     @GetMapping("/turnos")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_GERENTE_PLANTA')")
+    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + GERENTE_PLANTA + "')")
     public ResponseEntity<List<ReporteTurnoResponseDTO>> getReporteTurnos(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) String tipoPrioridad) {
 
-        List<ReporteTurnoResponseDTO> result = reporteService.getReporteTurnos(
-                fechaInicio, fechaFin, estado, tipoPrioridad);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(
+                reporteService.getReporteTurnos(fechaInicio, fechaFin, estado, tipoPrioridad));
     }
 }
