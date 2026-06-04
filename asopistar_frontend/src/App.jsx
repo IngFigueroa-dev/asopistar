@@ -21,10 +21,11 @@ import Procesamiento from './pages/procesamiento/Procesamiento'
 import Almacenamiento from './pages/almacenamiento/Almacenamiento'
 import Logistica     from './pages/logistica/Logistica'
 import Pagos         from './pages/pagos/Pagos'
+import Ingresos      from './pages/ingresos/Ingresos'   // ← NUEVO
 import Reportes      from './pages/reportes/Reportes'
 import Configuracion from './pages/configuracion/Configuracion'
 import Insumos       from './pages/insumos/Insumos'
-import Clientes      from './pages/clientes/Clientes'   // ← NUEVO
+import Clientes      from './pages/clientes/Clientes'
 import PuntosDeVenta from './pages/puntosDeVenta/PuntosDeVenta'
 
 // Admin
@@ -49,20 +50,21 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Routes>
-                  <Route path="/dashboard"     element={<Dashboard />} />
-                  <Route path="/productores"   element={<Productores />} />
-                  <Route path="/produccion"    element={<Produccion />} />
-                  <Route path="/calendario"    element={<Calendario />} />
-                  <Route path="/recepciones"   element={<Recepciones />} />
-                  <Route path="/procesamiento" element={<Procesamiento />} />
-                  <Route path="/insumos"       element={<Insumos />} />
+                  <Route path="/dashboard"      element={<Dashboard />} />
+                  <Route path="/productores"    element={<Productores />} />
+                  <Route path="/produccion"     element={<Produccion />} />
+                  <Route path="/calendario"     element={<Calendario />} />
+                  <Route path="/recepciones"    element={<Recepciones />} />
+                  <Route path="/procesamiento"  element={<Procesamiento />} />
+                  <Route path="/insumos"        element={<Insumos />} />
                   <Route path="/almacenamiento" element={<Almacenamiento />} />
-                  <Route path="/logistica"     element={<Logistica />} />
-                  <Route path="/clientes"      element={<Clientes />} /> 
-                  <Route path="/puntos-venta" element={<PuntosDeVenta />} />  
-                  <Route path="/pagos"         element={<Pagos />} />
-                  <Route path="/reportes"      element={<Reportes />} />
-                  <Route path="/configuracion" element={<Configuracion />} />
+                  <Route path="/logistica"      element={<Logistica />} />
+                  <Route path="/clientes"       element={<Clientes />} />
+                  <Route path="/puntos-venta"   element={<PuntosDeVenta />} />
+                  <Route path="/pagos"          element={<Pagos />} />
+                  <Route path="/ingresos"       element={<Ingresos />} />   {/* ← NUEVO */}
+                  <Route path="/reportes"       element={<Reportes />} />
+                  <Route path="/configuracion"  element={<Configuracion />} />
 
                   {/* Admin — solo ADMINISTRADOR_GENERAL */}
                   <Route

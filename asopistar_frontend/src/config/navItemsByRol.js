@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Fish, Calendar,
   Snowflake, Truck, DollarSign, BarChart2,
   Settings, ClipboardCheck, ShieldCheck, UserCog,
-  Beaker, ShoppingBag, Building2, Store
+  Beaker, ShoppingBag, Building2, Store, TrendingUp
 } from 'lucide-react'
 
 // Todos los ítems posibles del sistema
@@ -23,6 +23,7 @@ export const ALL_NAV_ITEMS = [
   { to: '/clientes',            icon: Building2,       label: 'Clientes' },
   { to: '/puntos-venta',        icon: Store,           label: 'Puntos de Venta' },
   { to: '/pagos',               icon: DollarSign,      label: 'Pagos' },
+  { to: '/ingresos',            icon: TrendingUp,      label: 'Ingresos' },  // ← NUEVO
   { to: '/reportes',            icon: BarChart2,       label: 'Reportes' },
   { to: '/admin/solicitudes',   icon: ShieldCheck,     label: 'Solicitudes de Acceso' },
   { to: '/admin/usuarios',      icon: UserCog,         label: 'Gestión de Usuarios' },
@@ -35,8 +36,8 @@ const RUTAS_POR_ROL = {
   ROLE_ADMINISTRADOR_GENERAL: [
     '/dashboard', '/productores', '/produccion', '/calendario',
     '/recepciones', '/procesamiento', '/almacenamiento', '/logistica', '/clientes',
-    '/puntos-venta', '/pagos', '/insumos', '/reportes', '/admin/solicitudes', '/admin/usuarios',
-    '/configuracion',
+    '/puntos-venta', '/pagos', '/ingresos', '/insumos', '/reportes',
+    '/admin/solicitudes', '/admin/usuarios', '/configuracion',
   ],
   ROLE_PRODUCTOR: [
     '/dashboard', '/calendario', '/configuracion',
@@ -52,13 +53,14 @@ const RUTAS_POR_ROL = {
     '/dashboard', '/procesamiento', '/almacenamiento', '/configuracion',
   ],
   ROLE_CONTADORA: [
-    '/dashboard', '/recepciones', '/pagos', '/insumos', '/reportes', '/configuracion',
+    '/dashboard', '/recepciones', '/pagos', '/ingresos', '/insumos', '/reportes', '/configuracion',
   ],
   ROLE_SECRETARIA: [
     '/dashboard', '/productores', '/clientes', '/puntos-venta', '/recepciones', '/reportes', '/configuracion',
   ],
   ROLE_GERENTE_COMERCIAL: [
-    '/dashboard', '/almacenamiento', '/logistica', '/clientes', '/puntos-venta', '/reportes', '/configuracion',
+    '/dashboard', '/almacenamiento', '/logistica', '/clientes', '/puntos-venta',
+    '/ingresos', '/reportes', '/configuracion',
   ],
   ROLE_VENDEDOR_INSUMOS: [
     '/dashboard', '/productores', '/insumos', '/configuracion',
