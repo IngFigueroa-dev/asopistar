@@ -1164,3 +1164,48 @@ ORDER BY r.id_rol;
 UPDATE negocio.rol
 SET nombre = SUBSTRING(nombre FROM 6)  -- quita los primeros 5 caracteres "ROLE_"
 WHERE nombre LIKE 'ROLE_%';
+
+
+
+
+
+-- ============================================================
+-- MIGRACIÓN ASOPISTAR — Sistema de reenvío y auditoría
+-- Ejecutar sobre la BD: asopistar  /  Schema: negocio
+-- ============================================================
+
+-- ── 1. Nuevas columnas en negocio.usuario ────────────────────
+-- Control de reenvíos de correo de verificación
+ALTER TABLE negocio.usuario
+    ADD COLUMN IF NOT EXISTS cantidad_reenvios  INTEGER      NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ultimo_reenvio     TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS error_envio_correo VARCHAR(500);
+
+-- El enum EstadoUsuario ya incluye ERROR_ENVIO_CORREO y SUSPENDIDO;
+-- como está mapeado con EnumType.STRING en JPA, Postgres acepta
+-- cualquier varchar — no hay tipo ENUM nativo que migrar.
+-- Validar que la columna estado acepte los nuevos valores:
+-- (Si en tu BD la columna estado es un tipo enum de Postgres,
+--  ejecuta estas líneas; si es VARCHAR, omítelas.)
+-- ALTER TYPE negocio.estado_usuario_enum ADD VALUE IF NOT EXISTS 'ERROR_ENVIO_CORREO';
+-- ALTER TYPE negocio.estado_usuario_enum ADD VALUE IF NOT EXISTS 'SUSPENDIDO';
+
+
+-- ── 2. Tabla de auditoría ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS negocio.auditoria_usuario (
+    id_auditoria    SERIAL PRIMARY KEY,
+    id_usuario      INT          NOT NULL REFERENCES negocio.usuario(id_usuario),
+    fecha           TIMESTAMP    NOT NULL DEFAULT NOW(),
+    accion          VARCHAR(50)  NOT NULL,
+    -- Valores de accion:
+    --   REGISTRO, CORREO_ENVIADO, CORREO_REENVIADO, ERROR_ENVIO_CORREO,
+    --   VERIFICACION_REALIZADA, APROBACION_MANUAL, APROBACION_NORMAL,
+    --   RECHAZO, ACTIVACION, SUSPENSION, DESACTIVACION
+    id_admin        INT          REFERENCES negocio.usuario(id_usuario),
+    observaciones   VARCHAR(500)
+);
+
+-- Índices útiles para filtrar por usuario y por fecha
+CREATE INDEX IF NOT EXISTS idx_auditoria_usuario  ON negocio.auditoria_usuario(id_usuario);
+CREATE INDEX IF NOT EXISTS idx_auditoria_fecha     ON negocio.auditoria_usuario(fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_accion    ON negocio.auditoria_usuario(accion);
