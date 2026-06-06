@@ -19,3 +19,16 @@ body.alt-font {
   font-family: Arial, sans-serif;
   letter-spacing: 0.05em;
 }
+
+/* ------------- Dashboard -----------*/
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

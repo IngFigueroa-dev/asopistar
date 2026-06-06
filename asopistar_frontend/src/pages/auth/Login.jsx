@@ -1,6 +1,7 @@
 // src/pages/auth/Login.jsx
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { X } from 'lucide-react'
 import api from '../../services/api'
 
 function Login() {
@@ -9,16 +10,22 @@ function Login() {
   const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
 
+  // ── Modal reenvío ────────────────────────────────────────────────────────
+  const [modalReenvio, setModalReenvio]     = useState(false)
+  const [emailReenvio, setEmailReenvio]     = useState('')
+  const [reenvioEstado, setReenvioEstado]   = useState('idle') // idle|loading|exito|error
+  const [reenvioMensaje, setReenvioMensaje] = useState('')
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError('')
     try {
       const res = await api.post('/auth/login', form)
-      localStorage.setItem('token',    res.data.token)
-      localStorage.setItem('email',    res.data.email)
-      localStorage.setItem('rol',      res.data.rol)
-      localStorage.setItem('nombre',   res.data.nombre)
+      localStorage.setItem('token',     res.data.token)
+      localStorage.setItem('email',     res.data.email)
+      localStorage.setItem('rol',       res.data.rol)
+      localStorage.setItem('nombre',    res.data.nombre)
       localStorage.setItem('idUsuario', res.data.idUsuario)
       navigate('/dashboard')
     } catch (err) {
@@ -32,6 +39,32 @@ function Login() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const abrirModalReenvio = () => {
+    setEmailReenvio(form.email) // pre-llenar con el correo que ya escribió
+    setReenvioEstado('idle')
+    setReenvioMensaje('')
+    setModalReenvio(true)
+  }
+
+  const handleReenviar = async () => {
+    if (!emailReenvio.trim()) {
+      setReenvioMensaje('Ingresa tu correo electrónico.')
+      setReenvioEstado('error')
+      return
+    }
+    setReenvioEstado('loading')
+    setReenvioMensaje('')
+    try {
+      await api.post('/auth/reenviar-verificacion', { email: emailReenvio.trim() })
+      setReenvioEstado('exito')
+      setReenvioMensaje('Hemos enviado un nuevo correo de verificación a tu dirección registrada.')
+    } catch (err) {
+      setReenvioEstado('error')
+      const msg = err.response?.data?.mensaje || err.response?.data?.message
+      setReenvioMensaje(msg || 'No se pudo reenviar. Verifica que el correo esté registrado.')
     }
   }
 
@@ -104,10 +137,98 @@ function Login() {
           </p>
         </div>
 
+        {/* ── Reenvío de verificación ── */}
+        <div className="text-center mt-3">
+          <button
+            type="button"
+            onClick={abrirModalReenvio}
+            className="text-xs text-gray-400 hover:text-teal-600 transition-colors"
+          >
+            ¿No recibiste el correo de verificación? Reenviar enlace
+          </button>
+        </div>
+
         <p className="text-center text-xs text-gray-400 mt-6">
           Asociación de Piscicultores del Tarra
         </p>
       </div>
+
+      {/* ── Modal de reenvío ─────────────────────────────────────────────── */}
+      {modalReenvio && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl">
+
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-base font-bold text-gray-800">
+                📧 Reenviar correo de verificación
+              </h2>
+              <button
+                onClick={() => setModalReenvio(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 flex flex-col gap-4">
+              {reenvioEstado !== 'exito' ? (
+                <>
+                  <p className="text-sm text-gray-500">
+                    Ingresa el correo con el que te registraste y te enviaremos
+                    un nuevo enlace de verificación.
+                  </p>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Correo electrónico
+                    </label>
+                    <input
+                      type="email"
+                      value={emailReenvio}
+                      onChange={e => setEmailReenvio(e.target.value)}
+                      placeholder="correo@ejemplo.com"
+                      className="px-4 py-3 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 transition-colors"
+                    />
+                  </div>
+
+                  {reenvioEstado === 'error' && reenvioMensaje && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                      ⚠️ {reenvioMensaje}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setModalReenvio(false)}
+                      className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleReenviar}
+                      disabled={reenvioEstado === 'loading'}
+                      className="flex-1 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-70"
+                    >
+                      {reenvioEstado === 'loading' ? 'Enviando...' : 'Reenviar enlace'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-4 py-2">
+                  <div className="text-4xl">✅</div>
+                  <p className="text-sm text-gray-600 text-center">{reenvioMensaje}</p>
+                  <button
+                    onClick={() => setModalReenvio(false)}
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Entendido
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
