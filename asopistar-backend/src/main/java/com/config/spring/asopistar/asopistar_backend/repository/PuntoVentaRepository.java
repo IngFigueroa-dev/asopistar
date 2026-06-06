@@ -38,4 +38,10 @@ public interface PuntoVentaRepository extends JpaRepository<PuntoVenta, Integer>
 
     /** Buscar por código exacto. */
     Optional<PuntoVenta> findByCodigo(String codigo);
+
+
+    // --------------------------- Dashboard -------------------------------
+
+    // Puntos de venta activos
+    Long countByActivoTrue();
 }

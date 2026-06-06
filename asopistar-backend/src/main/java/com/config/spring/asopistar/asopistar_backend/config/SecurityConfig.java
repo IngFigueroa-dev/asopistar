@@ -156,9 +156,14 @@ public class SecurityConfig {
                 .requestMatchers("/reportes/**")
                     .hasAnyAuthority(ADMIN, CONTADORA, GERENTE_COMERCIAL,
                         GERENTE_PLANTA, SECRETARIA, BIOLOGO)
-
+                        
+                // ── Administración de solicitudes de acceso ───────────────────────────
+                .requestMatchers("/admin/solicitudes/**").hasAuthority(ADMIN)
+                
+                
                 // ── Resto: cualquier usuario autenticado ──────────────────────
                 .anyRequest().authenticated()
+
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter,

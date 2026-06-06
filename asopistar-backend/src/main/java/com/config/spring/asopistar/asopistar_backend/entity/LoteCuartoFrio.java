@@ -27,7 +27,7 @@ public class LoteCuartoFrio {
     private Boolean estado;
 
     // PENDIENTE_DECISION → ALMACENADO | DESPACHADO
-    @Column(name = "estado_decision", length = 20)
+    @Column(name = "estado_decision", length = 30)
     private String estadoDecision;
 
     @ManyToOne(fetch = FetchType.LAZY)

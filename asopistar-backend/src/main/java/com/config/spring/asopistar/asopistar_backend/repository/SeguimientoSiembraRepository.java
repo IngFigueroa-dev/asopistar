@@ -2,7 +2,10 @@ package com.config.spring.asopistar.asopistar_backend.repository;
 
 import com.config.spring.asopistar.asopistar_backend.entity.SeguimientoSiembra;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
  
@@ -24,4 +27,18 @@ public interface SeguimientoSiembraRepository
 
     // Necesario para ReporteServiceImpl — devuelve los seguimientos de una siembra
     List<SeguimientoSiembra> findBySiembra_IdSiembra(Integer idSiembra);
+
+
+
+
+
+    // --------------------------------- Dashboard ---------------------------------
+
+    // Peso promedio del seguimiento más reciente registrado en el sistema
+    @Query("""
+        SELECT s.pesoPromedio FROM SeguimientoSiembra s
+        ORDER BY s.fechaVisita DESC
+        LIMIT 1
+        """)
+    BigDecimal findPesoPromedioUltimoSeguimiento();
 }

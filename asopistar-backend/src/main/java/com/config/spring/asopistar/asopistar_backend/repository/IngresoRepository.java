@@ -4,34 +4,34 @@ import com.config.spring.asopistar.asopistar_backend.entity.Ingreso;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
+@Repository
 public interface IngresoRepository extends JpaRepository<Ingreso, Integer> {
 
-    // ── Listados ──────────────────────────────────────────────────────────────
+    // ── Consultas operativas ──────────────────────────────────────────────────
 
     List<Ingreso> findAllByOrderByFechaDesc();
 
-    List<Ingreso> findByEstadoPagoOrderByFechaDesc(String estadoPago);
+    List<Ingreso> findByTipoOrigen(String tipoOrigen);
 
-    List<Ingreso> findByTipoIngresoOrderByFechaDesc(String tipoIngreso);
-
-    List<Ingreso> findByCliente_IdClienteOrderByFechaDesc(Integer idCliente);
-
-    // ── Filtrado combinado ────────────────────────────────────────────────────
-
+    /**
+     * Filtro flexible usado por IngresoServiceImpl.filtrar().
+     * Todos los parámetros son opcionales (null = sin filtro).
+     */
     @Query("""
         SELECT i FROM Ingreso i
-        WHERE (:estado   IS NULL OR i.estadoPago  = :estado)
-          AND (:tipo     IS NULL OR i.tipoIngreso = :tipo)
+        WHERE (:estado IS NULL OR i.estadoPago = :estado)
+          AND (:tipo IS NULL OR i.tipoIngreso = :tipo)
           AND (:idCliente IS NULL OR i.cliente.idCliente = :idCliente)
-          AND (:desde    IS NULL OR i.fecha >= :desde)
-          AND (:hasta    IS NULL OR i.fecha <= :hasta)
+          AND (:desde IS NULL OR i.fecha >= :desde)
+          AND (:hasta IS NULL OR i.fecha <= :hasta)
         ORDER BY i.fecha DESC
-    """)
+        """)
     List<Ingreso> filtrar(
             @Param("estado")    String estado,
             @Param("tipo")      String tipo,
@@ -40,63 +40,80 @@ public interface IngresoRepository extends JpaRepository<Ingreso, Integer> {
             @Param("hasta")     LocalDateTime hasta
     );
 
-    // ── Estadísticas ──────────────────────────────────────────────────────────
+    // ── Estadísticas usadas por IngresoServiceImpl.estadisticas() ─────────────
 
-    @Query("""
-        SELECT COALESCE(SUM(i.valorTotal), 0)
-        FROM Ingreso i
-        WHERE i.estadoPago <> 'ANULADO'
-    """)
-    java.math.BigDecimal sumValorTotal();
+    /** Suma total de valor_total (todos los ingresos no anulados). */
+    @Query("SELECT COALESCE(SUM(i.valorTotal), 0) FROM Ingreso i WHERE i.estadoPago <> 'ANULADO'")
+    BigDecimal sumValorTotal();
 
-    @Query("""
-        SELECT COALESCE(SUM(i.valorPagado), 0)
-        FROM Ingreso i
-        WHERE i.estadoPago <> 'ANULADO'
-    """)
-    java.math.BigDecimal sumValorPagado();
+    /** Suma total de valor_pagado (lo que ya se cobró). */
+    @Query("SELECT COALESCE(SUM(i.valorPagado), 0) FROM Ingreso i WHERE i.estadoPago <> 'ANULADO'")
+    BigDecimal sumValorPagado();
 
-    @Query("""
-        SELECT COALESCE(SUM(i.saldoPendiente), 0)
-        FROM Ingreso i
-        WHERE i.estadoPago IN ('PENDIENTE', 'PARCIAL')
-    """)
-    java.math.BigDecimal sumSaldoPendiente();
+    /** Suma total de saldo_pendiente (cartera por cobrar). */
+    @Query("SELECT COALESCE(SUM(i.saldoPendiente), 0) FROM Ingreso i WHERE i.estadoPago IN ('PENDIENTE', 'PARCIAL')")
+    BigDecimal sumSaldoPendiente();
 
-    @Query("""
-        SELECT COUNT(i) FROM Ingreso i
-        WHERE i.estadoPago = :estado
-    """)
-    long countByEstado(@Param("estado") String estado);
+    /** Cuenta ingresos por estado_pago (PENDIENTE, PARCIAL, PAGADO, ANULADO). */
+    @Query("SELECT COUNT(i) FROM Ingreso i WHERE i.estadoPago = :estado")
+    Long countByEstado(@Param("estado") String estado);
 
-    // ── Reportes por tipo ─────────────────────────────────────────────────────
-
+    /**
+     * Suma de valor_total agrupada por tipo_ingreso.
+     * Retorna Object[] donde [0] = tipoIngreso (String) y [1] = suma (BigDecimal).
+     * Excluye ingresos ANULADOS.
+     */
     @Query("""
         SELECT i.tipoIngreso, COALESCE(SUM(i.valorTotal), 0)
         FROM Ingreso i
         WHERE i.estadoPago <> 'ANULADO'
         GROUP BY i.tipoIngreso
-    """)
+        """)
     List<Object[]> sumPorTipoIngreso();
 
-    // ── Número de ingreso ─────────────────────────────────────────────────────
+    // ── Queries para el Dashboard ─────────────────────────────────────────────
 
-    Optional<Ingreso> findByNumeroIngreso(String numeroIngreso);
-
-    @Query("SELECT MAX(i.idIngreso) FROM Ingreso i WHERE YEAR(i.fechaCreacion) = :anio")
-    Optional<Integer> maxIdEnAnio(@Param("anio") int anio);
-
-    // ── Cartera por cliente ───────────────────────────────────────────────────
-
+    /** Suma de valor_total de ingresos en el mes y año actuales (excluye ANULADOS). */
     @Query("""
-        SELECT i.cliente.idCliente,
-               COALESCE(SUM(i.valorTotal), 0),
-               COALESCE(SUM(i.valorPagado), 0),
-               COALESCE(SUM(i.saldoPendiente), 0)
-        FROM Ingreso i
-        WHERE i.cliente IS NOT NULL
+        SELECT COALESCE(SUM(i.valorTotal), 0) FROM Ingreso i
+        WHERE i.estadoPago <> 'ANULADO'
+          AND MONTH(i.fecha) = :mes
+          AND YEAR(i.fecha) = :anio
+        """)
+    BigDecimal sumIngresosMes(@Param("mes") int mes, @Param("anio") int anio);
+
+    /** Suma histórica total de valor_total (excluye ANULADOS). */
+    @Query("SELECT COALESCE(SUM(i.valorTotal), 0) FROM Ingreso i WHERE i.estadoPago <> 'ANULADO'")
+    BigDecimal sumIngresosTotal();
+
+    /** Suma de saldo_pendiente — cartera por cobrar activa. */
+    @Query("""
+        SELECT COALESCE(SUM(i.saldoPendiente), 0) FROM Ingreso i
+        WHERE i.estadoPago IN ('PENDIENTE', 'PARCIAL')
+        """)
+    BigDecimal sumCarteraPendiente();
+
+    /** Cantidad de ingresos con saldo pendiente. */
+    @Query("SELECT COUNT(i) FROM Ingreso i WHERE i.estadoPago IN ('PENDIENTE', 'PARCIAL')")
+    Long countIngresosConSaldo();
+
+    /** Suma de ingresos del mes con tipo = VENTA_PESCADO. */
+    @Query("""
+        SELECT COALESCE(SUM(i.valorTotal), 0) FROM Ingreso i
+        WHERE i.tipoIngreso = 'VENTA_PESCADO'
           AND i.estadoPago <> 'ANULADO'
-        GROUP BY i.cliente.idCliente
-    """)
-    List<Object[]> resumenCarteraPorCliente();
+          AND MONTH(i.fecha) = :mes
+          AND YEAR(i.fecha) = :anio
+        """)
+    BigDecimal sumIngresosPescadoMes(@Param("mes") int mes, @Param("anio") int anio);
+
+    /** Suma de ingresos del mes con tipo = VENTA_ALEVINOS o VENTA_CONCENTRADO. */
+    @Query("""
+        SELECT COALESCE(SUM(i.valorTotal), 0) FROM Ingreso i
+        WHERE i.tipoIngreso IN ('VENTA_ALEVINOS', 'VENTA_CONCENTRADO')
+          AND i.estadoPago <> 'ANULADO'
+          AND MONTH(i.fecha) = :mes
+          AND YEAR(i.fecha) = :anio
+        """)
+    BigDecimal sumIngresosInsumosMes(@Param("mes") int mes, @Param("anio") int anio);
 }

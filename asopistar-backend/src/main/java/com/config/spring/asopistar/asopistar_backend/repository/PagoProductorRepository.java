@@ -13,7 +13,7 @@ import java.util.Optional;
 @Repository
 public interface PagoProductorRepository extends JpaRepository<PagoProductor, Integer> {
 
-    // ─── Filtros básicos ───────────────────────────────────────────────────────
+    // ── Consultas existentes (sin modificar) ──────────────────────────────────
 
     List<PagoProductor> findByEstado(String estado);
 
@@ -21,13 +21,9 @@ public interface PagoProductorRepository extends JpaRepository<PagoProductor, In
 
     List<PagoProductor> findByProductor_IdProductorAndEstado(Integer idProductor, String estado);
 
-    // ─── Validación de negocio: ¿ya existe un pago PAGADO para esta recepción? ─
-
     boolean existsByRecepcion_IdRecepcionAndEstado(Integer idRecepcion, String estado);
 
     Optional<PagoProductor> findByRecepcion_IdRecepcion(Integer idRecepcion);
-
-    // ─── Estadísticas con JPQL ─────────────────────────────────────────────────
 
     @Query("SELECT COALESCE(SUM(p.monto), 0) FROM PagoProductor p WHERE p.estado = 'PAGADO'")
     BigDecimal sumTotalPagado();
@@ -44,8 +40,6 @@ public interface PagoProductorRepository extends JpaRepository<PagoProductor, In
     @Query("SELECT COALESCE(AVG(p.monto), 0) FROM PagoProductor p")
     BigDecimal avgMonto();
 
-    // ─── Pagos por productor con JOIN FETCH para evitar N+1 ───────────────────
-
     @Query("SELECT p FROM PagoProductor p " +
            "JOIN FETCH p.productor pr " +
            "JOIN FETCH p.recepcion r " +
@@ -55,6 +49,19 @@ public interface PagoProductorRepository extends JpaRepository<PagoProductor, In
            "ORDER BY p.fechaPago DESC")
     List<PagoProductor> findAllWithFilters(
             @Param("estado") String estado,
-            @Param("idProductor") Integer idProductor
-    );
+            @Param("idProductor") Integer idProductor);
+
+    // ── Nuevas queries para el Dashboard (solo lectura) ───────────────────────
+
+    /**
+     * Suma de pagos completados (estado = PAGADO) en el mes y año actuales.
+     * COALESCE evita null si no hay pagos en el período.
+     */
+    @Query("""
+        SELECT COALESCE(SUM(p.monto), 0) FROM PagoProductor p
+        WHERE p.estado = 'PAGADO'
+          AND MONTH(p.fechaPago) = :mes
+          AND YEAR(p.fechaPago) = :anio
+        """)
+    BigDecimal sumPagadosMes(@Param("mes") int mes, @Param("anio") int anio);
 }

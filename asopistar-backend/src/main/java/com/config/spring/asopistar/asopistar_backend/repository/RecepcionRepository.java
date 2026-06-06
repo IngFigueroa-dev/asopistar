@@ -6,16 +6,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
 public interface RecepcionRepository extends JpaRepository<Recepcion, Integer> {
 
-    // ── Filtro simple por productor (usado por el modal de pagos) ─────────────
+    // ── Consultas existentes (sin modificar) ──────────────────────────────────
+
     List<Recepcion> findByProductor_IdProductorOrderByFechaHoraDesc(Integer idProductor);
 
-    // ── Recepciones SIN pago PAGADO para un productor ─────────────────────────
-    // Permite crear un nuevo pago solo sobre recepciones que lo necesitan.
     @Query("""
         SELECT r FROM Recepcion r
         WHERE r.productor.idProductor = :idProductor
@@ -28,6 +28,35 @@ public interface RecepcionRepository extends JpaRepository<Recepcion, Integer> {
         """)
     List<Recepcion> findSinPagoPorProductor(@Param("idProductor") Integer idProductor);
 
-    // ── Todas las recepciones ordenadas por fecha desc ────────────────────────
     List<Recepcion> findAllByOrderByFechaHoraDesc();
+
+    // ── Nuevas queries para el Dashboard (solo lectura) ───────────────────────
+
+    /**
+     * Cantidad de recepciones registradas en el mes y año actuales.
+     * Usa MONTH() y YEAR() de JPQL para compatibilidad con PostgreSQL via Hibernate.
+     */
+    @Query("""
+        SELECT COUNT(r) FROM Recepcion r
+        WHERE MONTH(r.fechaHora) = :mes AND YEAR(r.fechaHora) = :anio
+        """)
+    Long countRecepcionesMes(@Param("mes") int mes, @Param("anio") int anio);
+
+    /** Total histórico de recepciones. */
+    @Query("SELECT COUNT(r) FROM Recepcion r")
+    Long countRecepcionesTotal();
+
+    /**
+     * Suma de kilos recibidos en el mes y año actuales.
+     * COALESCE evita null si no hay recepciones en el mes.
+     */
+    @Query("""
+        SELECT COALESCE(SUM(r.kilosRecibidos), 0) FROM Recepcion r
+        WHERE MONTH(r.fechaHora) = :mes AND YEAR(r.fechaHora) = :anio
+        """)
+    BigDecimal sumKilosRecibidosMes(@Param("mes") int mes, @Param("anio") int anio);
+
+    /** Suma histórica total de kilos recibidos. */
+    @Query("SELECT COALESCE(SUM(r.kilosRecibidos), 0) FROM Recepcion r")
+    BigDecimal sumKilosRecibidosTotal();
 }

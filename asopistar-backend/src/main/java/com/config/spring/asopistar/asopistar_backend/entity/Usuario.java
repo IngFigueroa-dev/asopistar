@@ -83,6 +83,22 @@ public class Usuario implements UserDetails {
     @Column(name = "fecha_expiracion_token")
     private LocalDateTime fechaExpiracionToken;
 
+    // ── Reenvíos de correo ───────────────────────────────────────────────────
+    @Column(name = "cantidad_reenvios")
+    @Builder.Default
+    private Integer cantidadReenvios = 0;
+
+    @Column(name = "ultimo_reenvio")
+    private LocalDateTime ultimoReenvio;
+
+    /**
+     * Almacena el mensaje de error SMTP cuando el correo no pudo enviarse.
+     * Si no null, el estado del usuario es ERROR_ENVIO_CORREO.
+     */
+    @Column(name = "error_envio_correo", length = 500)
+    private String errorEnvioCorreo;
+
+
     // ── Aprobación ───────────────────────────────────────────────────────────
     @Column(name = "fecha_aprobacion")
     private LocalDateTime fechaAprobacion;
@@ -125,7 +141,8 @@ public class Usuario implements UserDetails {
     public boolean isAccountNonLocked() {
         // Bloqueado si está rechazado o inactivo
         return estado != EstadoUsuario.RECHAZADO
-            && estado != EstadoUsuario.INACTIVO;
+            && estado != EstadoUsuario.INACTIVO
+            && estado != EstadoUsuario.SUSPENDIDO;
     }
 
     @Override

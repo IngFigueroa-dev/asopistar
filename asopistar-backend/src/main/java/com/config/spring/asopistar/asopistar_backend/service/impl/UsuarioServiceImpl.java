@@ -162,12 +162,7 @@ public class UsuarioServiceImpl implements UsuarioService {
             }
         }
 
-        
-
-
-
         // Rol provisional: siempre PRODUCTOR hasta que el admin apruebe y asigne el real.
-        // Para el token JWT no importa aún porque el usuario no puede iniciar sesión.
         Rol rolProvisional = rolRepository.findByNombre("PRODUCTOR")
             .orElseThrow(() -> new ResourceNotFoundException("Rol PRODUCTOR no encontrado en BD."));
 
@@ -192,6 +187,7 @@ public class UsuarioServiceImpl implements UsuarioService {
             .fechaCreacion(LocalDate.now())
             .tokenVerificacion(token)
             .fechaExpiracionToken(LocalDateTime.now().plusHours(24))
+            .cantidadReenvios(0)  // ← inicializar contador
             .rol(rolProvisional)
             .build();
 
@@ -204,12 +200,37 @@ public class UsuarioServiceImpl implements UsuarioService {
             .observacion("Registro público desde formulario. Cargo solicitado: " + dto.getCargoSolicitado())
             .build());
 
-        // Enviar correo de verificación (asíncrono, no bloquea)
-        emailService.enviarVerificacionEmail(
-            dto.getEmail(),
-            dto.getNombre1() + " " + dto.getApellido1(),
-            token
-        );
+        // ── CAMBIO 1: Enviar correo con try-catch para capturar fallos SMTP ──
+        // Si el correo falla, el usuario NO queda bloqueado:
+        // su estado cambia a ERROR_ENVIO_CORREO y el admin puede intervenir.
+        try {
+            emailService.enviarVerificacionEmail(
+                dto.getEmail(),
+                dto.getNombre1() + " " + dto.getApellido1(),
+                token
+            );
+            // El estado ya es PENDIENTE_VERIFICACION desde el builder — no se cambia
+            historialRepository.save(HistorialSolicitud.builder()
+                .usuario(usuario)
+                .accion("CORREO_ENVIADO")
+                .observacion("Correo de verificación enviado correctamente al registrarse.")
+                .build());
+            log.info("Correo de verificación enviado a: {}", dto.getEmail());
+        } catch (Exception e) {
+            log.error("Error SMTP al enviar verificación a {}: {}", dto.getEmail(), e.getMessage());
+            // Marcar el estado para que el admin pueda identificar la solicitud
+            usuario.setEstado(EstadoUsuario.ERROR_ENVIO_CORREO);
+            usuario.setErrorEnvioCorreo(e.getMessage());
+            usuarioRepository.save(usuario);
+            historialRepository.save(HistorialSolicitud.builder()
+                .usuario(usuario)
+                .accion("ERROR_ENVIO_CORREO")
+                .observacion("Fallo SMTP al registrarse: " + e.getMessage())
+                .build());
+            // No relanzar la excepción: el usuario quedó guardado y puede
+            // pedir el reenvío o el admin puede intervenir desde el panel.
+            log.warn("El usuario {} quedó en estado ERROR_ENVIO_CORREO.", dto.getEmail());
+        }
 
         log.info("Nuevo usuario registrado: {} — Cargo: {}", dto.getEmail(), dto.getCargoSolicitado());
     }
@@ -233,8 +254,9 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
 
         u.setEstado(EstadoUsuario.PENDIENTE_APROBACION);
-        u.setTokenVerificacion(null);        // invalidar el token
+        u.setTokenVerificacion(null);
         u.setFechaExpiracionToken(null);
+        u.setErrorEnvioCorreo(null); // limpiar error previo si lo había
         usuarioRepository.save(u);
 
         historialRepository.save(HistorialSolicitud.builder()
@@ -252,27 +274,51 @@ public class UsuarioServiceImpl implements UsuarioService {
         Usuario u = usuarioRepository.findByEmail(email)
             .orElseThrow(() -> new ResourceNotFoundException("No existe una cuenta con ese correo."));
 
-        if (u.getEstado() != EstadoUsuario.PENDIENTE_VERIFICACION) {
-            throw new BusinessException("Este usuario ya verificó su correo o no requiere verificación.");
+        // ── CAMBIO 2: Aceptar también usuarios en ERROR_ENVIO_CORREO ──
+        // Antes solo aceptaba PENDIENTE_VERIFICACION; ahora también acepta
+        // ERROR_ENVIO_CORREO para que el usuario no quede bloqueado.
+        if (u.getEstado() != EstadoUsuario.PENDIENTE_VERIFICACION
+                && u.getEstado() != EstadoUsuario.ERROR_ENVIO_CORREO) {
+            throw new BusinessException("Tu cuenta no está pendiente de verificación.");
         }
 
-        // Generar nuevo token
+        // Generar nuevo token e invalidar el anterior
         String nuevoToken = UUID.randomUUID().toString();
         u.setTokenVerificacion(nuevoToken);
         u.setFechaExpiracionToken(LocalDateTime.now().plusHours(24));
+        u.setCantidadReenvios(u.getCantidadReenvios() == null ? 1 : u.getCantidadReenvios() + 1);
+        u.setUltimoReenvio(LocalDateTime.now());
+        u.setErrorEnvioCorreo(null); // limpiar error anterior antes de intentar
+        u.setEstado(EstadoUsuario.PENDIENTE_VERIFICACION); // restaurar estado si era ERROR
         usuarioRepository.save(u);
 
-        emailService.reenviarVerificacion(
-            u.getEmail(),
-            u.getNombre1() + " " + u.getApellido1(),
-            nuevoToken
-        );
-
-        historialRepository.save(HistorialSolicitud.builder()
-            .usuario(u)
-            .accion("REENVIO_VERIFICACION")
-            .observacion("Reenvío de correo de verificación solicitado.")
-            .build());
+        // Intentar envío con manejo de error
+        try {
+            emailService.reenviarVerificacion(
+                u.getEmail(),
+                u.getNombre1() + " " + u.getApellido1(),
+                nuevoToken
+            );
+            historialRepository.save(HistorialSolicitud.builder()
+                .usuario(u)
+                .accion("REENVIO_VERIFICACION")
+                .observacion("Reenvío #" + u.getCantidadReenvios() + " solicitado por el usuario.")
+                .build());
+            log.info("Reenvío de verificación exitoso para: {} (intento #{})",
+                u.getEmail(), u.getCantidadReenvios());
+        } catch (Exception e) {
+            log.error("Error SMTP en reenvío para {}: {}", u.getEmail(), e.getMessage());
+            u.setEstado(EstadoUsuario.ERROR_ENVIO_CORREO);
+            u.setErrorEnvioCorreo(e.getMessage());
+            usuarioRepository.save(u);
+            historialRepository.save(HistorialSolicitud.builder()
+                .usuario(u)
+                .accion("ERROR_ENVIO_CORREO")
+                .observacion("Fallo SMTP en reenvío #" + u.getCantidadReenvios() + ": " + e.getMessage())
+                .build());
+            throw new BusinessException(
+                "No se pudo enviar el correo. Contacta al administrador del sistema.");
+        }
     }
 
     // ── Aprobación / rechazo ─────────────────────────────────────────────────
@@ -299,7 +345,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         u.setAprobadoPor(admin);
         usuarioRepository.save(u);
 
-        // Si el cargo solicitado era PRODUCTOR, crear automáticamente el registro en productor
         if ("PRODUCTOR".equalsIgnoreCase(u.getCargoSolicitado())) {
             crearProductorDesdeUsuario(u);
         }
@@ -358,7 +403,6 @@ public class UsuarioServiceImpl implements UsuarioService {
     // ── Creación automática de Productor al aprobar ───────────────────────────
 
     private void crearProductorDesdeUsuario(Usuario u) {
-        // Verificar si ya existe un productor vinculado a este usuario
         if (productorRepository.existsByUsuarioIdUsuario(u.getIdUsuario())) {
             log.warn("El usuario {} ya tiene un productor asociado. Se omite la creación.", u.getEmail());
             return;

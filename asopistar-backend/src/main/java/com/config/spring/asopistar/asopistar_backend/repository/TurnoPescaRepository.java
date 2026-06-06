@@ -3,6 +3,7 @@ package com.config.spring.asopistar.asopistar_backend.repository;
 import com.config.spring.asopistar.asopistar_backend.entity.TurnoPesca;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
@@ -37,4 +38,23 @@ public interface TurnoPescaRepository extends JpaRepository<TurnoPesca, Integer>
         "t.siembra.cantidadAlevinos ASC, " +
         "t.siembra.fechaSiembra ASC")
     List<TurnoPesca> findTurnosOrdenadosPorPrioridad();
+
+
+    //---------------- Dashboard -------------------------------------------
+    
+    // Cuenta turnos en varios estados a la vez
+    @Query("SELECT COUNT(t) FROM TurnoPesca t WHERE t.estado IN :estados")
+    Long countByEstadoIn(@Param("estados") List<String> estados);
+
+    // Cuenta por un solo estado
+    @Query("SELECT COUNT(t) FROM TurnoPesca t WHERE t.estado = :estado")
+    Long countByEstado(@Param("estado") String estado);
+
+    // Emergencias pendientes o confirmadas
+    @Query("""
+        SELECT COUNT(t) FROM TurnoPesca t
+        WHERE t.tipoPrioridad = 'EMERGENCIA'
+        AND t.estado IN ('PENDIENTE', 'CONFIRMADO')
+        """)
+    Long countEmergenciasPendientes();
 }
