@@ -2,7 +2,9 @@ package com.config.spring.asopistar.asopistar_backend.controller;
 
 import com.config.spring.asopistar.asopistar_backend.dto.request.RegistroRequestDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.LoginResponseDTO;
+import com.config.spring.asopistar.asopistar_backend.entity.Productor;
 import com.config.spring.asopistar.asopistar_backend.entity.Usuario;
+import com.config.spring.asopistar.asopistar_backend.repository.ProductorRepository;
 import com.config.spring.asopistar.asopistar_backend.security.JwtTokenProvider;
 import com.config.spring.asopistar.asopistar_backend.service.UsuarioService;
 import jakarta.validation.Valid;
@@ -24,6 +26,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider      jwtTokenProvider;
     private final UsuarioService        usuarioService;
+    private final ProductorRepository   productorRepository;
 
     // ── POST /auth/login ─────────────────────────────────────────────────────
     @PostMapping("/login")
@@ -38,22 +41,33 @@ public class AuthController {
         );
 
         Usuario usuario = (Usuario) auth.getPrincipal();
-        String token = jwtTokenProvider.generateToken(usuario);
+        String token    = jwtTokenProvider.generateToken(usuario);
+
+        // ── Obtener idProductor si el rol es ROLE_PRODUCTOR ──────────────────
+        String rolActual    = usuario.getAuthorities().iterator().next().getAuthority();
+        Integer idProductor = null;
+
+        if ("ROLE_PRODUCTOR".equals(rolActual)) {
+            idProductor = productorRepository
+                .findByUsuarioIdUsuario(usuario.getIdUsuario())
+                .map(Productor::getIdProductor)
+                .orElse(null);
+        }
 
         LoginResponseDTO response = LoginResponseDTO.builder()
             .token(token)
             .tipo("Bearer")
             .email(usuario.getEmail())
-            .rol(usuario.getAuthorities().iterator().next().getAuthority())
+            .rol(rolActual)
             .nombre(usuario.getNombre1() + " " + usuario.getApellido1())
             .idUsuario(usuario.getIdUsuario())
+            .idProductor(idProductor)
             .build();
 
         return ResponseEntity.ok(response);
     }
 
     // ── POST /auth/registro ──────────────────────────────────────────────────
-    // Endpoint público — cualquier persona puede registrarse
     @PostMapping("/registro")
     public ResponseEntity<Map<String, String>> registro(
             @Valid @RequestBody RegistroRequestDTO dto) {
@@ -65,7 +79,6 @@ public class AuthController {
     }
 
     // ── GET /auth/verificar-email?token=UUID ────────────────────────────────
-    // El usuario llega aquí al hacer clic en el enlace del correo
     @GetMapping("/verificar-email")
     public ResponseEntity<Map<String, String>> verificarEmail(
             @RequestParam String token) {

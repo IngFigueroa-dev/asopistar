@@ -67,34 +67,69 @@ public class SecurityConfig {
                 .requestMatchers("/usuarios/me").authenticated()
                 .requestMatchers("/usuarios/**").hasAuthority(ADMIN)
 
-                // ── Productores y estanques ───────────────────────────────────
+                // ── Productores ───────────────────────────────────────────────
+                // El PRODUCTOR puede leer datos de productores (para su propio perfil)
                 .requestMatchers(HttpMethod.GET, "/productores/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA, BIOLOGO,
-                        GERENTE_COMERCIAL, CONTADORA, SECRETARIA, VENDEDOR_INSUMOS)
+                        GERENTE_COMERCIAL, CONTADORA, SECRETARIA, VENDEDOR_INSUMOS,
+                        PRODUCTOR)
                 .requestMatchers(HttpMethod.POST, "/productores/**")
                     .hasAnyAuthority(ADMIN, SECRETARIA)
                 .requestMatchers(HttpMethod.PUT, "/productores/**")
                     .hasAnyAuthority(ADMIN, SECRETARIA)
-                .requestMatchers("/estanques/**")
-                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA)
-                .requestMatchers("/especies/**")
-                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA)
 
-                // ── Biólogo ───────────────────────────────────────────────────
-                .requestMatchers(HttpMethod.POST, "/seguimientos/**")
-                    .hasAnyAuthority(ADMIN, BIOLOGO)
-                .requestMatchers(HttpMethod.GET, "/siembras/**")
-                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, GERENTE_COMERCIAL)
-                .requestMatchers(HttpMethod.POST, "/siembras/**")
+                // ── Estanques — separado por método para dar acceso al PRODUCTOR ──
+                // El PRODUCTOR puede ver y crear sus propios estanques,
+                // pero NO puede editar ni eliminar (eso es del staff).
+                .requestMatchers(HttpMethod.GET, "/estanques/**")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR)
+                .requestMatchers(HttpMethod.POST, "/estanques/**")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR)
+                .requestMatchers(HttpMethod.PUT, "/estanques/**")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA)
+                .requestMatchers(HttpMethod.DELETE, "/estanques/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
 
-                // ── Gerente de planta ─────────────────────────────────────────
+                // ── Especies — separado por método para dar acceso al PRODUCTOR ──
+                // El PRODUCTOR puede ver el catálogo y agregar nuevas especies.
+                .requestMatchers(HttpMethod.GET, "/especies/**")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR)
+                .requestMatchers(HttpMethod.POST, "/especies/**")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR)
+                .requestMatchers(HttpMethod.PUT, "/especies/**")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA)
+                .requestMatchers(HttpMethod.DELETE, "/especies/**")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
+
+                // ── Seguimientos — el PRODUCTOR solo puede LEER ───────────────
+                // El POST sigue restringido a BIOLOGO y ADMIN.
+                .requestMatchers(HttpMethod.GET, "/seguimientos/**")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR)
+                .requestMatchers(HttpMethod.POST, "/seguimientos/**")
+                    .hasAnyAuthority(ADMIN, BIOLOGO)
+
+                // ── Siembras — el PRODUCTOR puede leer y crear ────────────────
+                .requestMatchers(HttpMethod.GET, "/siembras/**")
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA,
+                        GERENTE_COMERCIAL, PRODUCTOR)
+                .requestMatchers(HttpMethod.POST, "/siembras/**")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, PRODUCTOR)
+                // PUT de siembras: solo staff (el productor no edita siembras manualmente)
+                .requestMatchers(HttpMethod.PUT, "/siembras/**")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
+
+                // ── Gerente de planta / Recepciones ──────────────────────────
                 .requestMatchers(HttpMethod.GET, "/recepciones/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CONTADORA, SECRETARIA)
                 .requestMatchers(HttpMethod.POST, "/recepciones/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
+
+                // ── Turnos de pesca — PRODUCTOR puede leer y crear ───────────
+                // El PRODUCTOR reserva su propio turno desde Produccion.jsx.
                 .requestMatchers("/turnos-pesca/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA, PRODUCTOR)
+
+                // ── Procesamiento y cuarto frío ───────────────────────────────
                 .requestMatchers("/procesamientos/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO)
                 .requestMatchers("/lotes-cuarto-frio/**")
@@ -121,13 +156,9 @@ public class SecurityConfig {
                 // ── Finanzas ──────────────────────────────────────────────────
                 .requestMatchers("/pagos-productor/**")
                     .hasAnyAuthority(ADMIN, CONTADORA)
-
-                // metodos-pago: usado en modales de Pagos e Ingresos
-                // Se amplía a todos los roles que usan esos módulos
                 .requestMatchers("/metodos-pago/**")
                     .hasAnyAuthority(ADMIN, CONTADORA, GERENTE_COMERCIAL,
                         GERENTE_PLANTA, SECRETARIA)
-
                 .requestMatchers("/ingresos/**")
                     .hasAnyAuthority(ADMIN, CONTADORA, GERENTE_COMERCIAL)
 
@@ -156,14 +187,12 @@ public class SecurityConfig {
                 .requestMatchers("/reportes/**")
                     .hasAnyAuthority(ADMIN, CONTADORA, GERENTE_COMERCIAL,
                         GERENTE_PLANTA, SECRETARIA, BIOLOGO)
-                        
-                // ── Administración de solicitudes de acceso ───────────────────────────
+
+                // ── Administración de solicitudes de acceso ───────────────────
                 .requestMatchers("/admin/solicitudes/**").hasAuthority(ADMIN)
-                
-                
+
                 // ── Resto: cualquier usuario autenticado ──────────────────────
                 .anyRequest().authenticated()
-
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter,

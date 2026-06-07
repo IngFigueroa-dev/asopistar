@@ -15,4 +15,5 @@ public interface TurnoPescaService {
     TurnoPescaResponseDTO crear(TurnoPescaRequestDTO dto);
     TurnoPescaResponseDTO cambiarEstado(Integer id, String nuevoEstado);
     List<TurnoPescaResponseDTO> listarOrdenadosPorPrioridad();
+    List<TurnoPescaResponseDTO> listarPorProductor(Integer idProductor);
 }

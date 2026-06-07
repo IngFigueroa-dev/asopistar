@@ -25,6 +25,7 @@ public interface ProductorRepository extends JpaRepository<Productor, Integer> {
     boolean existsByUsuarioIdUsuario(Integer idUsuario);
 
 
+
     //-------------------- dashboard ------------------
 
     // Productores activos
