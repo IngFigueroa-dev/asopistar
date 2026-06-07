@@ -27,6 +27,16 @@ function Login() {
       localStorage.setItem('rol',       res.data.rol)
       localStorage.setItem('nombre',    res.data.nombre)
       localStorage.setItem('idUsuario', res.data.idUsuario)
+
+      // ── NUEVO: guardar idProductor si el rol es ROLE_PRODUCTOR ──────────
+      // El backend devuelve idProductor solo cuando el usuario es productor.
+      // Para otros roles llega null — no se guarda para evitar confusiones.
+      if (res.data.idProductor != null) {
+        localStorage.setItem('idProductor', res.data.idProductor)
+      } else {
+        localStorage.removeItem('idProductor')
+      }
+
       navigate('/dashboard')
     } catch (err) {
       const status = err.response?.status
@@ -43,7 +53,7 @@ function Login() {
   }
 
   const abrirModalReenvio = () => {
-    setEmailReenvio(form.email) // pre-llenar con el correo que ya escribió
+    setEmailReenvio(form.email)
     setReenvioEstado('idle')
     setReenvioMensaje('')
     setModalReenvio(true)
@@ -137,7 +147,7 @@ function Login() {
           </p>
         </div>
 
-        {/* ── Reenvío de verificación ── */}
+        {/* Reenvío de verificación */}
         <div className="text-center mt-3">
           <button
             type="button"

@@ -38,8 +38,17 @@ const MOV_COLORS = {
   AJUSTE:  'bg-purple-100 text-purple-800',
 }
 
+// ── Rol del usuario ───────────────────────────────────────────
+// El productor solo puede VER insumos — no crear, editar, vender ni mover.
+// Tabs visibles para el productor: inventario y reportes (solo lectura).
+const TABS_PRODUCTOR = ['inventario']
+
 // ── Componente principal ──────────────────────────────────────
 export default function Insumos() {
+  // ── Identidad del usuario ───────────────────────────────────
+  const rol         = localStorage.getItem('rol') || ''
+  const esProductor = rol === 'ROLE_PRODUCTOR'
+
   const [tab, setTab]               = useState('inventario')
   const [insumos, setInsumos]       = useState([])
   const [ventas, setVentas]         = useState([])
@@ -49,8 +58,8 @@ export default function Insumos() {
   const [error, setError]           = useState(null)
   const [busqueda, setBusqueda]     = useState('')
 
-  // Modales
-  const [modalInsumo, setModalInsumo]     = useState(null)   // null | 'crear' | objeto
+  // Modales (solo roles con permisos de escritura)
+  const [modalInsumo, setModalInsumo]     = useState(null)
   const [modalVenta, setModalVenta]       = useState(false)
   const [modalMovimiento, setModalMovimiento] = useState(false)
   const [confirmDesactivar, setConfirmDesactivar] = useState(null)
@@ -61,24 +70,44 @@ export default function Insumos() {
     setLoading(true)
     setError(null)
     try {
-      const [ins, vts, movs, prods] = await Promise.all([
-        getInsumos(),
-        getVentas(),
-        getMovimientos(),
-        getProductoresActivos(),
-      ])
-      setInsumos(ins.data)
-      setVentas(vts.data)
-      setMovimientos(movs.data)
-      setProductores(prods.data)
+      if (esProductor) {
+        // ── PRODUCTOR: solo carga insumos (lo único que puede ver) ──────
+        // No llama a getVentas(), getMovimientos() ni getProductoresActivos()
+        // porque esos endpoints requieren permisos que el productor no tiene.
+        const ins = await getInsumos()
+        setInsumos(ins.data)
+        setVentas([])
+        setMovimientos([])
+        setProductores([])
+      } else {
+        // ── Resto de roles: carga todo en paralelo ───────────────────────
+        const [ins, vts, movs, prods] = await Promise.all([
+          getInsumos(),
+          getVentas(),
+          getMovimientos(),
+          getProductoresActivos(),
+        ])
+        setInsumos(ins.data)
+        setVentas(vts.data)
+        setMovimientos(movs.data)
+        setProductores(prods.data)
+      }
     } catch {
       setError('No se pudo cargar la información. Verifica que el servidor esté activo.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [esProductor])
 
   useEffect(() => { cargarDatos() }, [cargarDatos])
+
+  // Tabs visibles según rol
+  const tabsVisibles = esProductor
+    ? TABS.filter(t => TABS_PRODUCTOR.includes(t.id))
+    : TABS
+
+  // Si el tab activo no está disponible para el rol, resetear a inventario
+  const tabActivo = esProductor && !TABS_PRODUCTOR.includes(tab) ? 'inventario' : tab
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -89,7 +118,9 @@ export default function Insumos() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Módulo de Insumos</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Inventario · Ventas · Movimientos · Reportes
+            {esProductor
+              ? 'Consulta el catálogo de insumos disponibles'
+              : 'Inventario · Ventas · Movimientos · Reportes'}
           </p>
         </div>
         <button
@@ -101,7 +132,7 @@ export default function Insumos() {
         </button>
       </div>
 
-      {/* Alerta bajo stock */}
+      {/* Alerta bajo stock — visible para todos */}
       {bajoStock.length > 0 && (
         <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
           <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
@@ -123,14 +154,14 @@ export default function Insumos() {
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Tabs — filtradas según rol */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {TABS.map(({ id, label, icon: Icon }) => (
+        {tabsVisibles.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === id
+              tabActivo === id
                 ? 'bg-white text-teal-700 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
@@ -147,18 +178,19 @@ export default function Insumos() {
       </div>
 
       {/* Contenido por tab */}
-      {tab === 'inventario' && (
+      {tabActivo === 'inventario' && (
         <TabInventario
           insumos={insumos}
           busqueda={busqueda}
           setBusqueda={setBusqueda}
-          onCrear={() => setModalInsumo('crear')}
-          onEditar={(ins) => setModalInsumo(ins)}
-          onDesactivar={(ins) => setConfirmDesactivar(ins)}
+          onCrear={esProductor ? null : () => setModalInsumo('crear')}
+          onEditar={esProductor ? null : (ins) => setModalInsumo(ins)}
+          onDesactivar={esProductor ? null : (ins) => setConfirmDesactivar(ins)}
           loading={loading}
+          esProductor={esProductor}
         />
       )}
-      {tab === 'ventas' && (
+      {tabActivo === 'ventas' && !esProductor && (
         <TabVentas
           ventas={ventas}
           busqueda={busqueda}
@@ -171,7 +203,7 @@ export default function Insumos() {
           loading={loading}
         />
       )}
-      {tab === 'movimientos' && (
+      {tabActivo === 'movimientos' && !esProductor && (
         <TabMovimientos
           movimientos={movimientos}
           busqueda={busqueda}
@@ -180,12 +212,12 @@ export default function Insumos() {
           loading={loading}
         />
       )}
-      {tab === 'reportes' && (
+      {tabActivo === 'reportes' && (
         <TabReportes insumos={insumos} ventas={ventas} movimientos={movimientos} />
       )}
 
-      {/* Modales */}
-      {modalInsumo !== null && (
+      {/* Modales — solo para roles con permisos */}
+      {!esProductor && modalInsumo !== null && (
         <ModalInsumo
           insumo={modalInsumo === 'crear' ? null : modalInsumo}
           onClose={() => setModalInsumo(null)}
@@ -197,7 +229,7 @@ export default function Insumos() {
           }}
         />
       )}
-      {modalVenta && (
+      {!esProductor && modalVenta && (
         <ModalVenta
           insumos={insumos.filter(i => i.estado === 'ACTIVO')}
           productores={productores}
@@ -209,7 +241,7 @@ export default function Insumos() {
           }}
         />
       )}
-      {modalMovimiento && (
+      {!esProductor && modalMovimiento && (
         <ModalMovimiento
           insumos={insumos.filter(i => i.estado === 'ACTIVO')}
           onClose={() => setModalMovimiento(false)}
@@ -220,7 +252,7 @@ export default function Insumos() {
           }}
         />
       )}
-      {confirmDesactivar && (
+      {!esProductor && confirmDesactivar && (
         <ModalConfirm
           mensaje={`¿Desactivar el insumo "${confirmDesactivar.nombre}"? No se eliminará, pero no estará disponible para ventas.`}
           onConfirm={async () => {
@@ -236,7 +268,8 @@ export default function Insumos() {
 }
 
 // ── TAB: INVENTARIO ───────────────────────────────────────────
-function TabInventario({ insumos, busqueda, setBusqueda, onCrear, onEditar, onDesactivar, loading }) {
+// esProductor: oculta botones de acción (crear, editar, desactivar)
+function TabInventario({ insumos, busqueda, setBusqueda, onCrear, onEditar, onDesactivar, loading, esProductor }) {
   const filtrados = insumos.filter(i =>
     i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     (i.codigo || '').toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -255,16 +288,19 @@ function TabInventario({ insumos, busqueda, setBusqueda, onCrear, onEditar, onDe
             className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
-        <button
-          onClick={onCrear}
-          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-        >
-          <Plus size={15} /> Nuevo Insumo
-        </button>
+        {/* Botón "Nuevo Insumo" — oculto para el productor */}
+        {!esProductor && onCrear && (
+          <button
+            onClick={onCrear}
+            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+          >
+            <Plus size={15} /> Nuevo Insumo
+          </button>
+        )}
       </div>
 
       {loading ? (
-        <SkeletonTable cols={7} />
+        <SkeletonTable cols={esProductor ? 6 : 7} />
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
@@ -277,13 +313,14 @@ function TabInventario({ insumos, busqueda, setBusqueda, onCrear, onEditar, onDe
                 <th className="text-right px-4 py-3">Stock</th>
                 <th className="text-right px-4 py-3">Mín.</th>
                 <th className="text-left px-4 py-3">Estado</th>
-                <th className="text-center px-4 py-3">Acciones</th>
+                {/* Columna de acciones — oculta para el productor */}
+                {!esProductor && <th className="text-center px-4 py-3">Acciones</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-gray-400 text-sm">
+                  <td colSpan={esProductor ? 7 : 8} className="py-10 text-center text-gray-400 text-sm">
                     No hay insumos registrados
                   </td>
                 </tr>
@@ -316,26 +353,29 @@ function TabInventario({ insumos, busqueda, setBusqueda, onCrear, onEditar, onDe
                       {ins.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => onEditar(ins)}
-                        className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                        title="Editar"
-                      >
-                        <Edit2 size={14} />
-                      </button>
-                      {ins.estado === 'ACTIVO' && (
+                  {/* Acciones — ocultas para el productor */}
+                  {!esProductor && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => onDesactivar(ins)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Desactivar"
+                          onClick={() => onEditar(ins)}
+                          className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                          title="Editar"
                         >
-                          <XCircle size={14} />
+                          <Edit2 size={14} />
                         </button>
-                      )}
-                    </div>
-                  </td>
+                        {ins.estado === 'ACTIVO' && (
+                          <button
+                            onClick={() => onDesactivar(ins)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Desactivar"
+                          >
+                            <XCircle size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -554,20 +594,20 @@ function TabMovimientos({ movimientos, busqueda, setBusqueda, onNuevoMovimiento,
 
 // ── TAB: REPORTES ─────────────────────────────────────────────
 function TabReportes({ insumos, ventas, movimientos }) {
-  const totalStock     = insumos.filter(i => i.estado === 'ACTIVO').length
-  const bajoStockCount = insumos.filter(i => i.bajoStock && i.estado === 'ACTIVO').length
-  const totalVentas    = ventas.reduce((s, v) => s + Number(v.total), 0)
-  const ventasPendientes = ventas.filter(v => v.estadoPagado !== 'PAGADO').length
-  const entradas       = movimientos.filter(m => m.tipoMovimiento === 'ENTRADA').length
-  const salidas        = movimientos.filter(m => m.tipoMovimiento === 'SALIDA').length
+  const totalStock      = insumos.filter(i => i.estado === 'ACTIVO').length
+  const bajoStockCount  = insumos.filter(i => i.bajoStock && i.estado === 'ACTIVO').length
+  const totalVentas     = ventas.reduce((s, v) => s + Number(v.total), 0)
+  const ventasPendientes= ventas.filter(v => v.estadoPagado !== 'PAGADO').length
+  const entradas        = movimientos.filter(m => m.tipoMovimiento === 'ENTRADA').length
+  const salidas         = movimientos.filter(m => m.tipoMovimiento === 'SALIDA').length
 
   const cards = [
-    { label: 'Insumos activos',      valor: totalStock,      color: 'bg-teal-50 text-teal-700',    icono: Package },
-    { label: 'Bajo stock',            valor: bajoStockCount,  color: 'bg-amber-50 text-amber-700',  icono: AlertTriangle },
+    { label: 'Insumos activos',       valor: totalStock,       color: 'bg-teal-50 text-teal-700',    icono: Package },
+    { label: 'Bajo stock',            valor: bajoStockCount,   color: 'bg-amber-50 text-amber-700',  icono: AlertTriangle },
     { label: 'Total ventas (COP)',    valor: `$${totalVentas.toLocaleString('es-CO')}`, color: 'bg-blue-50 text-blue-700', icono: ShoppingCart },
-    { label: 'Ventas pendientes',     valor: ventasPendientes, color: 'bg-red-50 text-red-700',    icono: XCircle },
-    { label: 'Entradas de inventario',valor: entradas,        color: 'bg-green-50 text-green-700', icono: ArrowDown },
-    { label: 'Salidas de inventario', valor: salidas,         color: 'bg-purple-50 text-purple-700', icono: ArrowUp },
+    { label: 'Ventas pendientes',     valor: ventasPendientes, color: 'bg-red-50 text-red-700',      icono: XCircle },
+    { label: 'Entradas de inventario',valor: entradas,         color: 'bg-green-50 text-green-700',  icono: ArrowDown },
+    { label: 'Salidas de inventario', valor: salidas,          color: 'bg-purple-50 text-purple-700',icono: ArrowUp },
   ]
 
   return (
@@ -584,7 +624,6 @@ function TabReportes({ insumos, ventas, movimientos }) {
         ))}
       </div>
 
-      {/* Tabla de inventario actual */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
           <h3 className="text-sm font-semibold text-gray-700">Estado actual del inventario</h3>
@@ -606,8 +645,13 @@ function TabReportes({ insumos, ventas, movimientos }) {
                 <td className="px-4 py-2.5">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${TIPO_COLORS[i.tipo] || ''}`}>{i.tipo}</span>
                 </td>
-                <td className="px-4 py-2.5 text-right">{Number(i.stockActual).toLocaleString('es-CO')} <span className="text-gray-400 text-xs">{i.unidadMedida}</span></td>
-                <td className="px-4 py-2.5 text-right text-gray-500">{Number(i.stockMinimo).toLocaleString('es-CO')}</td>
+                <td className="px-4 py-2.5 text-right">
+                  {Number(i.stockActual).toLocaleString('es-CO')}
+                  <span className="text-gray-400 text-xs ml-1">{i.unidadMedida}</span>
+                </td>
+                <td className="px-4 py-2.5 text-right text-gray-500">
+                  {Number(i.stockMinimo).toLocaleString('es-CO')}
+                </td>
                 <td className="px-4 py-2.5">
                   {i.bajoStock
                     ? <span className="flex items-center gap-1 text-xs text-red-600"><AlertTriangle size={12} /> Bajo stock</span>
@@ -730,7 +774,7 @@ function ModalVenta({ insumos, productores, onClose, onSave }) {
   const [saving, setSaving]           = useState(false)
   const [err, setErr]                 = useState(null)
 
-  const addItem  = () => setItems(it => [...it, { idInsumo: '', cantidad: 1 }])
+  const addItem    = () => setItems(it => [...it, { idInsumo: '', cantidad: 1 }])
   const removeItem = (i) => setItems(it => it.filter((_, idx) => idx !== i))
   const updateItem = (i, key, val) =>
     setItems(it => it.map((item, idx) => idx === i ? { ...item, [key]: val } : item))
@@ -781,7 +825,6 @@ function ModalVenta({ insumos, productores, onClose, onSave }) {
           </Field>
         </div>
 
-        {/* Líneas de venta */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-gray-700">Insumos</label>

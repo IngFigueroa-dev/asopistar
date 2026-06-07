@@ -23,14 +23,16 @@ function ProtectedRoute({ children, requiredRol }) {
     return <Navigate to="/dashboard" replace />
   }
 
-  // Verificación por acceso a la ruta actual
-  // Solo aplica a rutas conocidas del sistema (evita bloquear rutas genéricas)
+  // Verificación por acceso a la ruta actual.
+  // Solo aplica a rutas conocidas del sistema para evitar bloquear rutas genéricas.
   const rutaActual = location.pathname
   const rutasConocidas = [
     '/productores', '/produccion', '/calendario', '/recepciones',
     '/procesamiento', '/almacenamiento', '/logistica', '/pagos',
     '/reportes', '/admin/solicitudes', '/admin/usuarios',
+    '/insumos', '/clientes', '/puntos-venta', '/ingresos',  // ← AGREGADAS
   ]
+
   if (rutasConocidas.includes(rutaActual) && !tieneAcceso(rol, rutaActual)) {
     return <Navigate to="/dashboard" replace />
   }
