@@ -265,14 +265,22 @@ const ITEMS_POR_PAGINA = 15
 
 function Reportes() {
   const rol = localStorage.getItem('rol') || ''
+
+  // Reportes permitidos por rol
+  const REPORTES_POR_ROL = {
+    ROLE_GERENTE_PLANTA:    ['recepciones', 'produccion', 'lotes', 'envios', 'turnos'],
+    ROLE_GERENTE_COMERCIAL: ['produccion', 'lotes', 'envios', 'turnos'],
+  }
+  const permitidos = REPORTES_POR_ROL[rol] ?? null  // null = todos (admin, contadora, etc.)
+
   const reportesVisibles = Object.fromEntries(
-    Object.entries(REPORTES_CONFIG).filter(([key]) => {
-      // El Gerente de Planta no tiene acceso al reporte de Pagos a Productores
-      if (key === 'pagos' && rol === 'ROLE_GERENTE_PLANTA') return false
-      return true
-    })
+    Object.entries(REPORTES_CONFIG).filter(([key]) =>
+      permitidos === null || permitidos.includes(key)
+    )
   )
-  const [reporteActivo, setReporteActivo] = useState('recepciones')
+
+  const primerReporte = Object.keys(reportesVisibles)[0] || 'recepciones'
+  const [reporteActivo, setReporteActivo] = useState(primerReporte)
   const [datos, setDatos] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
