@@ -120,7 +120,7 @@ public class SecurityConfig {
 
                 // ── Gerente de planta / Recepciones ──────────────────────────
                 .requestMatchers(HttpMethod.GET, "/recepciones/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CONTADORA, SECRETARIA)
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CONTADORA, SECRETARIA, GERENTE_COMERCIAL)
                 .requestMatchers(HttpMethod.POST, "/recepciones/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
 
@@ -133,7 +133,7 @@ public class SecurityConfig {
                 .requestMatchers("/procesamientos/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO)
                 .requestMatchers("/lotes-cuarto-frio/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO)
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO, GERENTE_COMERCIAL)
 
                 // ── Clientes y puntos de venta ────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/clientes/**")
