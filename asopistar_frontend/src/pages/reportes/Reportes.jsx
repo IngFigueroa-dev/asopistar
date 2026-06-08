@@ -264,6 +264,14 @@ const exportPrint = (datos, columnas, nombreReporte, filtrosActivos) => {
 const ITEMS_POR_PAGINA = 15
 
 function Reportes() {
+  const rol = localStorage.getItem('rol') || ''
+  const reportesVisibles = Object.fromEntries(
+    Object.entries(REPORTES_CONFIG).filter(([key]) => {
+      // El Gerente de Planta no tiene acceso al reporte de Pagos a Productores
+      if (key === 'pagos' && rol === 'ROLE_GERENTE_PLANTA') return false
+      return true
+    })
+  )
   const [reporteActivo, setReporteActivo] = useState('recepciones')
   const [datos, setDatos] = useState([])
   const [loading, setLoading] = useState(false)
@@ -365,7 +373,7 @@ function Reportes() {
 
       {/* Selector de reporte — tabs horizontales */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 flex flex-wrap gap-1">
-        {Object.entries(REPORTES_CONFIG).map(([key, cfg]) => {
+        {Object.entries(reportesVisibles).map(([key, cfg]) => {
           const Icon = cfg.icon
           const cols = COLOR_MAP[cfg.color]
           const activo = reporteActivo === key

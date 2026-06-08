@@ -1,24 +1,21 @@
 import { useState, useEffect } from 'react'
-import { Plus, ClipboardCheck, Clock } from 'lucide-react'
+import { Plus, ClipboardCheck, Clock, Fish } from 'lucide-react'
 import api from '../../services/api'
 
 function Recepciones() {
   const [recepciones, setRecepciones] = useState([])
-  const [turnos, setTurnos] = useState([])
-  const [productores, setProductores] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [turnos,      setTurnos]      = useState([])
+  const [loading,     setLoading]     = useState(true)
   const [mostrarModal, setMostrarModal] = useState(false)
-  const [error, setError] = useState('')
+  const [error,       setError]       = useState('')
+  const [turnoSeleccionado, setTurnoSeleccionado] = useState(null)
   const [form, setForm] = useState({
-    fechaHora: '',
-    kilosRecibidos: '',
-    observaciones: '',
-    idProductor: '',
-    idTurno: '',
+    fechaHora: '', kilosRecibidos: '',
+    observaciones: '', idProductor: '', idTurno: '',
   })
 
   useEffect(() => {
-    Promise.all([cargarRecepciones(), cargarTurnos(), cargarProductores()])
+    Promise.all([cargarRecepciones(), cargarTurnos()])
   }, [])
 
   const cargarRecepciones = async () => {
@@ -31,22 +28,53 @@ function Recepciones() {
 
   const cargarTurnos = async () => {
     try {
-        const [pendientes, confirmados] = await Promise.all([
-            api.get('/turnos-pesca/pendientes'),
-            api.get('/turnos-pesca')
-        ])
-        const turnosActivos = confirmados.data.filter(t =>
-            t.estado === 'PENDIENTE' || t.estado === 'CONFIRMADO'
-        )
-        setTurnos(turnosActivos)
+      const res = await api.get('/turnos-pesca')
+      setTurnos(res.data.filter(t => t.estado === 'PENDIENTE' || t.estado === 'CONFIRMADO'))
     } catch (err) { console.error(err) }
   }
 
-  const cargarProductores = async () => {
-    try {
-      const res = await api.get('/productores/activos')
-      setProductores(res.data)
-    } catch (err) { console.error(err) }
+  // Al seleccionar un turno: fijar productor automáticamente y cargar siembra
+  const handleTurnoChange = async (idTurno) => {
+    if (!idTurno) {
+      setTurnoSeleccionado(null)
+      setForm(prev => ({ ...prev, idTurno: '', idProductor: '' }))
+      return
+    }
+    const turno = turnos.find(t => t.idTurno === parseInt(idTurno))
+    setForm(prev => ({
+      ...prev,
+      idTurno: idTurno,
+      idProductor: turno?.idProductor || '',
+    }))
+    // Cargar datos de la siembra para mostrar kilos estimados
+    if (turno?.idSiembra) {
+      try {
+        const res = await api.get(`/seguimientos/siembra/${turno.idSiembra}/ultimo`)
+        setTurnoSeleccionado({ ...turno, cantidadEstimada: res.data.cantidadEstimada, pesoPromedio: res.data.pesoPromedio })
+      } catch {
+        setTurnoSeleccionado(turno)
+      }
+    } else {
+      setTurnoSeleccionado(turno)
+    }
+  }
+
+  const abrirModal = (turnoPreseleccionado = null) => {
+    setError('')
+    setTurnoSeleccionado(null)
+    setForm({ fechaHora: '', kilosRecibidos: '', observaciones: '', idProductor: '', idTurno: '' })
+    setMostrarModal(true)
+    if (turnoPreseleccionado) {
+      // Precargar el turno desde el banner
+      setTimeout(() => handleTurnoChange(String(turnoPreseleccionado.idTurno)), 0)
+    }
+  }
+
+  const cerrarModal = () => {
+    setMostrarModal(false)
+    setError('')
+    setTurnoSeleccionado(null)
+    setForm({ fechaHora: '', kilosRecibidos: '', observaciones: '', idProductor: '', idTurno: '' })
   }
 
   const handleSubmit = async (e) => {
@@ -56,20 +84,16 @@ function Recepciones() {
       await api.post('/recepciones', {
         ...form,
         kilosRecibidos: parseFloat(form.kilosRecibidos),
-        idProductor: parseInt(form.idProductor),
-        idTurno: parseInt(form.idTurno),
-        fechaHora: form.fechaHora + ':00',
+        idProductor:    parseInt(form.idProductor),
+        idTurno:        parseInt(form.idTurno),
+        fechaHora:      form.fechaHora + ':00',
       })
-      setMostrarModal(false)
-      setForm({
-        fechaHora: '', kilosRecibidos: '',
-        observaciones: '', idProductor: '', idTurno: '',
-      })
-      cargarRecepciones()
-      cargarTurnos()
+      cerrarModal()
+      await Promise.all([cargarRecepciones(), cargarTurnos()])
     } catch (err) {
-      setError('Error al registrar la recepción. Verifica los datos.')
-      console.error(err)
+      const msg = err.response?.data?.mensaje || err.response?.data?.message
+        || 'Error al registrar la recepción. Verifica los datos.'
+      setError(msg)
     }
   }
 
@@ -78,19 +102,15 @@ function Recepciones() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Recepciones</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Registra la entrada de pescado a la planta.
-          </p>
+          <p className="text-gray-500 text-sm mt-1">Registra la entrada de pescado a la planta.</p>
         </div>
-        <button
-          onClick={() => setMostrarModal(true)}
-          className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors"
-        >
+        <button onClick={() => abrirModal()}
+          className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors">
           <Plus size={18} /> Nueva Recepción
         </button>
       </div>
 
-      {/* Turnos confirmados pendientes de recepción */}
+      {/* Banner de turnos pendientes */}
       {turnos.length > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
           <p className="text-sm font-semibold text-yellow-800 mb-2">
@@ -102,24 +122,12 @@ function Recepciones() {
                 className="flex items-center justify-between bg-white rounded-lg px-4 py-2 border border-yellow-100">
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="text-yellow-600" />
-                  <span className="text-sm text-gray-700 font-medium">
-                    {t.nombreProductor}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    — {t.fechaProgramada}
-                  </span>
+                  <span className="text-sm text-gray-700 font-medium">{t.nombreProductor}</span>
+                  <span className="text-xs text-gray-400">— {t.fechaProgramada}</span>
                 </div>
                 <button
-                  onClick={() => {
-                    setForm(prev => ({
-                      ...prev,
-                      idTurno: t.idTurno,
-                      idProductor: t.idProductor,
-                    }))
-                    setMostrarModal(true)
-                  }}
-                  className="text-xs bg-teal-600 text-white px-3 py-1 rounded-lg hover:bg-teal-700 font-medium"
-                >
+                  onClick={() => abrirModal(t)}
+                  className="text-xs bg-teal-600 text-white px-3 py-1 rounded-lg hover:bg-teal-700 font-medium">
                   Registrar entrada
                 </button>
               </div>
@@ -128,11 +136,9 @@ function Recepciones() {
         </div>
       )}
 
-      {/* Lista recepciones */}
+      {/* Tabla de recepciones */}
       {loading ? (
-        <div className="flex justify-center items-center h-40 text-gray-400">
-          Cargando recepciones...
-        </div>
+        <div className="flex justify-center items-center h-40 text-gray-400">Cargando recepciones...</div>
       ) : recepciones.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-40 text-gray-400">
           <ClipboardCheck size={40} className="mb-2 opacity-30" />
@@ -153,30 +159,22 @@ function Recepciones() {
             <tbody className="divide-y divide-gray-50">
               {recepciones.map(r => (
                 <tr key={r.idRecepcion} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-mono text-sm text-gray-500">
-                    #{r.idRecepcion}
-                  </td>
+                  <td className="px-6 py-4 font-mono text-sm text-gray-500">#{r.idRecepcion}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center text-teal-700 font-bold text-sm">
                         {r.nombreProductor?.charAt(0)}
                       </div>
-                      <span className="text-sm font-medium text-gray-800">
-                        {r.nombreProductor}
-                      </span>
+                      <span className="text-sm font-medium text-gray-800">{r.nombreProductor}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm font-bold text-gray-800">
-                      {r.kilosRecibidos} kg
-                    </span>
+                    <span className="text-sm font-bold text-gray-800">{r.kilosRecibidos} kg</span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {r.fechaHora?.replace('T', ' ').substring(0, 16)}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {r.observaciones || '—'}
-                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{r.observaciones || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -190,25 +188,15 @@ function Recepciones() {
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
             <div className="p-6 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-800">Nueva Recepción</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Registra la entrada de pescado a la planta
-              </p>
+              <p className="text-sm text-gray-500 mt-1">Registra la entrada de pescado a la planta</p>
             </div>
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
 
+              {/* Turno de pesca */}
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Turno de pesca *
-                </label>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Turno de pesca *</label>
                 <select required value={form.idTurno}
-                  onChange={e => {
-                    const turno = turnos.find(t => t.idTurno === parseInt(e.target.value))
-                    setForm({
-                      ...form,
-                      idTurno: e.target.value,
-                      idProductor: turno?.idProductor || form.idProductor,
-                    })
-                  }}
+                  onChange={e => handleTurnoChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
                   <option value="">Seleccionar turno pendiente...</option>
                   {turnos.map(t => (
@@ -219,55 +207,74 @@ function Recepciones() {
                 </select>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Productor *
-                </label>
-                <select required value={form.idProductor}
-                  onChange={e => setForm({ ...form, idProductor: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
-                  <option value="">Seleccionar productor...</option>
-                  {productores.map(p => (
-                    <option key={p.idProductor} value={p.idProductor}>
-                      {p.nombre1} {p.apellido1}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Productor — se rellena automático al elegir turno, no editable */}
+              {form.idTurno && turnoSeleccionado && (
+                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex flex-col gap-2">
+                  <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide">
+                    Información del turno
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-teal-600 mb-0.5">Productor</p>
+                      <p className="font-semibold text-teal-900">{turnoSeleccionado.nombreProductor}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-teal-600 mb-0.5">Estanque</p>
+                      <p className="font-semibold text-teal-900">{turnoSeleccionado.codigoEstanque || '—'}</p>
+                    </div>
+                    {turnoSeleccionado.cantidadEstimada && (
+                      <div>
+                        <p className="text-xs text-teal-600 mb-0.5">Peces estimados</p>
+                        <p className="font-semibold text-teal-900">
+                          {turnoSeleccionado.cantidadEstimada?.toLocaleString()} unid.
+                        </p>
+                      </div>
+                    )}
+                    {turnoSeleccionado.pesoPromedio && (
+                      <div>
+                        <p className="text-xs text-teal-600 mb-0.5">Peso promedio</p>
+                        <p className="font-semibold text-teal-900">{turnoSeleccionado.pesoPromedio} g/pez</p>
+                      </div>
+                    )}
+                  </div>
+                  {turnoSeleccionado.cantidadEstimada && turnoSeleccionado.pesoPromedio && (
+                    <div className="mt-1 pt-2 border-t border-teal-200">
+                      <p className="text-xs text-teal-600 mb-0.5">Kilos estimados de cosecha</p>
+                      <p className="text-base font-bold text-teal-900">
+                        ≈ {((turnoSeleccionado.cantidadEstimada * turnoSeleccionado.pesoPromedio) / 1000).toFixed(1)} kg
+                      </p>
+                      <p className="text-xs text-teal-500 mt-0.5">
+                        Referencia para validar los kilos recibidos
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
+              {/* Fecha/hora y kilos */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-1">
-                    Fecha y hora *
-                  </label>
-                  <input
-                    type="datetime-local" required value={form.fechaHora}
+                  <label className="text-sm font-medium text-gray-700 block mb-1">Fecha y hora *</label>
+                  <input type="datetime-local" required value={form.fechaHora}
                     onChange={e => setForm({ ...form, fechaHora: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
-                  />
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-1">
-                    Kilos recibidos *
-                  </label>
-                  <input
-                    type="number" step="0.01" required value={form.kilosRecibidos}
+                  <label className="text-sm font-medium text-gray-700 block mb-1">Kilos recibidos *</label>
+                  <input type="number" step="0.01" min="0.01" required value={form.kilosRecibidos}
                     onChange={e => setForm({ ...form, kilosRecibidos: e.target.value })}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
-                  />
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500" />
                 </div>
               </div>
 
+              {/* Observaciones */}
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Observaciones
-                </label>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Observaciones</label>
                 <textarea value={form.observaciones}
                   onChange={e => setForm({ ...form, observaciones: e.target.value })}
                   rows={3} placeholder="Estado del pescado, condiciones de entrega..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 resize-none"
-                />
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 resize-none" />
               </div>
 
               {error && (
@@ -277,8 +284,7 @@ function Recepciones() {
               )}
 
               <div className="flex gap-3 pt-2">
-                <button type="button"
-                  onClick={() => { setMostrarModal(false); setError('') }}
+                <button type="button" onClick={cerrarModal}
                   className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
                   Cancelar
                 </button>

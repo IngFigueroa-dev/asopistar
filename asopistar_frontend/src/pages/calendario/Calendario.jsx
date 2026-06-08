@@ -1,75 +1,130 @@
 // src/pages/calendario/Calendario.jsx
 import { useState, useEffect, useCallback } from 'react'
-import { Calendar, Plus, Clock, Fish } from 'lucide-react'
+import { Calendar, Plus, Clock, Fish, AlertTriangle, Loader2 } from 'lucide-react'
 import api from '../../services/api'
 
 const ESTADOS_TURNO = {
   PENDIENTE:  { label: 'Pendiente',  class: 'bg-yellow-100 text-yellow-700' },
-  CONFIRMADO: { label: 'Confirmado', class: 'bg-blue-100 text-blue-700' },
-  REALIZADO:  { label: 'Realizado',  class: 'bg-green-100 text-green-700' },
-  CANCELADO:  { label: 'Cancelado',  class: 'bg-red-100 text-red-600' },
+  CONFIRMADO: { label: 'Confirmado', class: 'bg-blue-100 text-blue-700'    },
+  REALIZADO:  { label: 'Realizado',  class: 'bg-green-100 text-green-700'  },
+  CANCELADO:  { label: 'Cancelado',  class: 'bg-red-100 text-red-600'      },
+}
+
+const FORM_INICIAL = {
+  fechaProgramada: '', horaProgramada: '',
+  tipoPrioridad: 'NORMAL', motivoEmergencia: '',
+  estado: 'PENDIENTE', idSiembra: '', idProductor: '',
+}
+
+const hoy = () => new Date().toISOString().split('T')[0]
+
+const horaActual = () => {
+  const now = new Date()
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 }
 
 function Calendario() {
-  // Identidad del usuario
   const rol         = localStorage.getItem('rol') || ''
   const esProductor = rol === 'ROLE_PRODUCTOR'
   const idProductor = esProductor ? parseInt(localStorage.getItem('idProductor')) : null
 
-  const [turnos,     setTurnos]     = useState([])
-  const [siembras,   setSiembras]   = useState([])
-  const [productores,setProductores]= useState([])
-  const [loading,    setLoading]    = useState(true)
+  const [turnos,       setTurnos]       = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [filtro,       setFiltro]       = useState('TODOS')
   const [mostrarModal, setMostrarModal] = useState(false)
-  const [filtro,     setFiltro]     = useState('TODOS')
-  const [form,       setForm]       = useState({
-    fechaProgramada: '', horaProgramada: '',
-    tipoPrioridad: 'NORMAL', motivoEmergencia: '',
-    estado: 'PENDIENTE', idSiembra: '', idProductor: '',
-  })
 
-  // ── Carga de turnos diferenciada por rol ────────────────────────────────
+  // ── Estado del modal ──────────────────────────────────────────────────────
+  const [form,              setForm]              = useState(FORM_INICIAL)
+  const [loadingModal,      setLoadingModal]      = useState(false)
+  const [siembrasSinTurno,  setSiembrasSinTurno]  = useState([])
+  const [productoresModal,  setProductoresModal]  = useState([])
+  const [errorModal,        setErrorModal]        = useState('')
+  const [guardando,         setGuardando]         = useState(false)
+
+  // ── Carga de turnos ───────────────────────────────────────────────────────
   const cargarTurnos = useCallback(async () => {
     try {
-      let res
-      if (esProductor) {
-        // El productor solo ve SUS turnos
-        res = await api.get(`/turnos-pesca/productor/${idProductor}`)
-      } else {
-        // Todos los demás roles ven todos los turnos ordenados por prioridad
-        res = await api.get('/turnos-pesca/ordenados')
-      }
+      const res = esProductor
+        ? await api.get(`/turnos-pesca/productor/${idProductor}`)
+        : await api.get('/turnos-pesca/ordenados')
       setTurnos(res.data)
     } catch (err) { console.error('Error cargando turnos:', err) }
     finally { setLoading(false) }
   }, [esProductor, idProductor])
 
-  const cargarSiembras = async () => {
-    try {
-      const res = await api.get('/siembras/activas')
-      setSiembras(res.data)
-    } catch (err) { console.error(err) }
-  }
+  useEffect(() => { cargarTurnos() }, [cargarTurnos])
 
-  const cargarProductores = async () => {
+  // ── Abrir modal: cargar siembras disponibles frescos ─────────────────────
+  const abrirModal = async () => {
+    setMostrarModal(true)
+    setForm(FORM_INICIAL)
+    setErrorModal('')
+    setSiembrasSinTurno([])
+    setProductoresModal([])
+    setLoadingModal(true)
     try {
-      const res = await api.get('/productores/activos')
-      setProductores(res.data)
-    } catch (err) { console.error(err) }
-  }
+      const [resSiembras, resTurnos] = await Promise.all([
+        api.get('/siembras/listas-para-cosechar'),
+        api.get('/turnos-pesca/ordenados'),
+      ])
+      const turnosActivos = resTurnos.data.filter(
+        t => t.estado === 'PENDIENTE' || t.estado === 'CONFIRMADO'
+      )
+      const disponibles = resSiembras.data.filter(
+        s => !turnosActivos.some(t => t.idSiembra === s.idSiembra)
+      )
+      setSiembrasSinTurno(disponibles)
 
-  useEffect(() => {
-    const promesas = [cargarTurnos()]
-    if (!esProductor) {
-      // Solo los roles con acceso al modal de crear turno necesitan estas listas
-      promesas.push(cargarSiembras(), cargarProductores())
+      // Productores únicos con al menos una siembra disponible
+      const mapaProductores = new Map()
+      for (const s of disponibles) {
+        if (!mapaProductores.has(s.idProductor)) {
+          mapaProductores.set(s.idProductor, {
+            idProductor:     s.idProductor,
+            nombreProductor: s.nombreProductor,
+          })
+        }
+      }
+      setProductoresModal([...mapaProductores.values()])
+    } catch (err) {
+      console.error('Error cargando datos del modal:', err)
+      setErrorModal('Error al cargar los datos. Intenta de nuevo.')
+    } finally {
+      setLoadingModal(false)
     }
-    Promise.all(promesas)
-  }, [cargarTurnos, esProductor])
+  }
 
-  // ── Crear turno (solo roles no-productor) ────────────────────────────────
+  const cerrarModal = () => {
+    setMostrarModal(false)
+    setForm(FORM_INICIAL)
+    setErrorModal('')
+  }
+
+  // ── Siembras filtradas por productor seleccionado ─────────────────────────
+  const siembrasFiltradas = form.idProductor
+    ? siembrasSinTurno.filter(s => s.idProductor === parseInt(form.idProductor))
+    : []
+
+  // ── Validación de hora cuando la fecha es hoy ─────────────────────────────
+  const minHora = form.fechaProgramada === hoy() ? horaActual() : undefined
+
+  // ── Cambiar productor → limpiar siembra ───────────────────────────────────
+  const handleProductorChange = (e) => {
+    setForm({ ...form, idProductor: e.target.value, idSiembra: '' })
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setErrorModal('')
+
+    // Validación extra de hora
+    if (form.fechaProgramada === hoy() && form.horaProgramada < horaActual()) {
+      setErrorModal('La hora no puede ser anterior a la hora actual.')
+      return
+    }
+
+    setGuardando(true)
     try {
       const horaCombinada = form.fechaProgramada + 'T' + form.horaProgramada + ':00'
       await api.post('/turnos-pesca', {
@@ -78,16 +133,23 @@ function Calendario() {
         idSiembra:      parseInt(form.idSiembra),
         idProductor:    parseInt(form.idProductor),
       })
-      setMostrarModal(false)
-      cargarTurnos()
-    } catch (err) { console.error('Error creando turno:', err) }
+      cerrarModal()
+      await cargarTurnos()
+    } catch (err) {
+      const msg = err.response?.data?.mensaje
+        || err.response?.data?.message
+        || 'Error al guardar el turno. Verifica los datos.'
+      setErrorModal(msg)
+    } finally {
+      setGuardando(false)
+    }
   }
 
-  // ── Cambiar estado (gerente de planta / admin) ───────────────────────────
+  // ── Cambiar estado ────────────────────────────────────────────────────────
   const cambiarEstado = async (id, nuevoEstado) => {
     try {
       await api.patch(`/turnos-pesca/${id}/estado?nuevoEstado=${nuevoEstado}`)
-      cargarTurnos()
+      await cargarTurnos()
     } catch (err) { console.error('Error cambiando estado:', err) }
   }
 
@@ -95,8 +157,6 @@ function Calendario() {
     ? turnos
     : turnos.filter(t => t.estado === filtro)
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // RENDER
   // ══════════════════════════════════════════════════════════════════════════
   return (
     <div>
@@ -113,13 +173,9 @@ function Calendario() {
               : 'Planifica y gestiona los turnos de pesca.'}
           </p>
         </div>
-
-        {/* Botón "Agregar Turno" — SOLO para roles no-productor */}
         {!esProductor && (
-          <button
-            onClick={() => setMostrarModal(true)}
-            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors"
-          >
+          <button onClick={abrirModal}
+            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors">
             <Plus size={18} /> Agregar Turno
           </button>
         )}
@@ -161,8 +217,6 @@ function Calendario() {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-
-          {/* Nota informativa (solo para roles con gestión) */}
           {!esProductor && (
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
               <p className="text-sm text-gray-500">
@@ -172,87 +226,56 @@ function Calendario() {
               </p>
             </div>
           )}
-
-          {/* Tabla */}
           <table className="w-full">
             <thead className="border-b border-gray-100">
               <tr>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Turno
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">#</th>
                 {!esProductor && (
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-                    Productor
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Productor</th>
                 )}
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Siembra / Estanque
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Fecha programada
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Prioridad
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Estado
-                </th>
-                {/* Columna acciones — oculta para el productor */}
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estanque</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Prioridad</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
                 {!esProductor && (
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">
-                    Acciones
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Acción</th>
                 )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {turnosFiltrados.map((t, index) => (
-                <tr key={t.idTurno} className="hover:bg-gray-50">
-
-                  {/* Número de turno */}
+                <tr key={t.idTurno} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${
-                      index === 0
-                        ? 'bg-teal-600 text-white'
-                        : index === 1
-                        ? 'bg-teal-100 text-teal-700'
-                        : 'bg-gray-100 text-gray-600'
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                      index === 0 ? 'bg-teal-600 text-white'
+                      : index === 1 ? 'bg-teal-100 text-teal-700'
+                      : 'bg-gray-100 text-gray-600'
                     }`}>
                       {index + 1}
                     </div>
                   </td>
-
-                  {/* Productor (oculto para el productor mismo) */}
                   {!esProductor && (
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center text-teal-700 font-bold text-sm">
                           {t.nombreProductor?.charAt(0)}
                         </div>
-                        <span className="text-sm font-medium text-gray-800">
-                          {t.nombreProductor}
-                        </span>
+                        <span className="text-sm font-medium text-gray-800">{t.nombreProductor}</span>
                       </div>
                     </td>
                   )}
-
-                  {/* Siembra / estanque */}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                       <Fish size={14} className="text-teal-500 shrink-0" />
                       <span className="font-medium">{t.codigoEstanque}</span>
                     </div>
                   </td>
-
-                  {/* Fecha */}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <Clock size={14} />
                       {t.fechaProgramada}
                     </div>
                   </td>
-
-                  {/* Prioridad */}
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-1">
                       <span className={`text-xs px-2 py-1 rounded-full font-medium w-fit ${
@@ -263,37 +286,25 @@ function Calendario() {
                         {t.tipoPrioridad === 'EMERGENCIA' ? '🚨 Emergencia' : 'Normal'}
                       </span>
                       {t.motivoEmergencia && (
-                        <span className="text-xs text-red-500 max-w-32 truncate">
-                          {t.motivoEmergencia}
-                        </span>
+                        <span className="text-xs text-red-500 max-w-32 truncate">{t.motivoEmergencia}</span>
                       )}
                     </div>
                   </td>
-
-                  {/* Estado */}
                   <td className="px-6 py-4">
-                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                      ESTADOS_TURNO[t.estado]?.class
-                    }`}>
+                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${ESTADOS_TURNO[t.estado]?.class}`}>
                       {ESTADOS_TURNO[t.estado]?.label}
                     </span>
                   </td>
-
-                  {/* Acciones — solo para roles no-productor */}
                   {!esProductor && (
                     <td className="px-6 py-4">
                       {t.estado === 'PENDIENTE' && (
-                        <button
-                          onClick={() => cambiarEstado(t.idTurno, 'CONFIRMADO')}
-                          className="text-xs text-teal-600 hover:text-teal-800 font-medium"
-                        >
+                        <button onClick={() => cambiarEstado(t.idTurno, 'CONFIRMADO')}
+                          className="text-xs text-teal-600 hover:text-teal-800 font-medium">
                           Confirmar
                         </button>
                       )}
                       {t.estado === 'CONFIRMADO' && (
-                        <span className="text-xs text-gray-400">
-                          Esperando recepción
-                        </span>
+                        <span className="text-xs text-gray-400">Esperando recepción</span>
                       )}
                     </td>
                   )}
@@ -304,85 +315,159 @@ function Calendario() {
         </div>
       )}
 
-      {/* ── Modal Agregar Turno (solo roles no-productor) ───────────────── */}
+      {/* ── Modal Agregar Turno ──────────────────────────────────────────── */}
       {mostrarModal && !esProductor && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="p-6 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-800">Agregar Turno de Pesca</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Solo se muestran productores con siembras aprobadas y sin turno asignado.
+              </p>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Productor *</label>
-                <select required value={form.idProductor}
-                  onChange={e => setForm({ ...form, idProductor: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
-                  <option value="">Seleccionar productor...</option>
-                  {productores.map(p => (
-                    <option key={p.idProductor} value={p.idProductor}>
-                      {p.nombre1} {p.apellido1}
-                    </option>
-                  ))}
-                </select>
+
+            {/* ── Cargando datos del modal ── */}
+            {loadingModal ? (
+              <div className="p-10 flex flex-col items-center gap-3 text-gray-400">
+                <Loader2 size={28} className="animate-spin text-teal-500" />
+                <p className="text-sm">Cargando siembras disponibles...</p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Siembra *</label>
-                <select required value={form.idSiembra}
-                  onChange={e => setForm({ ...form, idSiembra: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
-                  <option value="">Seleccionar siembra...</option>
-                  {siembras.map(s => (
-                    <option key={s.idSiembra} value={s.idSiembra}>
-                      {s.nombreEspecie} - {s.codigoEstanque}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-1">Fecha *</label>
-                  <input type="date" required value={form.fechaProgramada}
-                    onChange={e => setForm({ ...form, fechaProgramada: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500" />
+
+            /* ── Sin siembras disponibles ── */
+            ) : siembrasSinTurno.length === 0 ? (
+              <div className="p-8 flex flex-col items-center gap-4 text-center">
+                <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Fish size={26} className="text-gray-400" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-1">Hora *</label>
-                  <input type="time" required value={form.horaProgramada}
-                    onChange={e => setForm({ ...form, horaProgramada: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500" />
+                  <p className="text-sm font-semibold text-gray-700 mb-1">
+                    No hay siembras disponibles
+                  </p>
+                  <p className="text-xs text-gray-500 max-w-xs">
+                    No existen siembras aprobadas por el biólogo sin turno de pesca asignado.
+                  </p>
                 </div>
+                <button onClick={cerrarModal}
+                  className="px-5 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  Cerrar
+                </button>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de prioridad</label>
-                <select value={form.tipoPrioridad}
-                  onChange={e => setForm({ ...form, tipoPrioridad: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
-                  <option value="NORMAL">Normal</option>
-                  <option value="EMERGENCIA">Emergencia</option>
-                </select>
-              </div>
-              {form.tipoPrioridad === 'EMERGENCIA' && (
+
+            /* ── Formulario ── */
+            ) : (
+              <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+
+                {errorModal && (
+                  <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                    {errorModal}
+                  </div>
+                )}
+
+                {/* Productor */}
                 <div>
                   <label className="text-sm font-medium text-gray-700 block mb-1">
-                    Motivo de emergencia *
+                    Productor *
                   </label>
-                  <textarea value={form.motivoEmergencia}
-                    onChange={e => setForm({ ...form, motivoEmergencia: e.target.value })}
-                    rows={2} required
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 resize-none" />
+                  <select required value={form.idProductor}
+                    onChange={handleProductorChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                    <option value="">Seleccionar productor...</option>
+                    {productoresModal.map(p => (
+                      <option key={p.idProductor} value={p.idProductor}>
+                        {p.nombreProductor}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {productoresModal.length} productor{productoresModal.length !== 1 ? 'es' : ''} con siembra{productoresModal.length !== 1 ? 's' : ''} lista{productoresModal.length !== 1 ? 's' : ''}
+                  </p>
                 </div>
-              )}
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setMostrarModal(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  Cancelar
-                </button>
-                <button type="submit"
-                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold">
-                  Guardar Turno
-                </button>
-              </div>
-            </form>
+
+                {/* Siembra — solo se activa al elegir productor */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1">
+                    Siembra *
+                  </label>
+                  <select required value={form.idSiembra}
+                    disabled={!form.idProductor}
+                    onChange={e => setForm({ ...form, idSiembra: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed">
+                    <option value="">
+                      {form.idProductor ? 'Seleccionar siembra...' : 'Selecciona un productor primero'}
+                    </option>
+                    {siembrasFiltradas.map(s => (
+                      <option key={s.idSiembra} value={s.idSiembra}>
+                        {s.nombreEspecie} — {s.codigoEstanque} (Siembra: {s.fechaSiembra})
+                      </option>
+                    ))}
+                  </select>
+                  {form.idProductor && siembrasFiltradas.length === 0 && (
+                    <p className="text-xs text-orange-500 mt-1">
+                      Este productor no tiene siembras disponibles.
+                    </p>
+                  )}
+                </div>
+
+                {/* Fecha y hora */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Fecha *</label>
+                    <input type="date" required
+                      min={hoy()}
+                      value={form.fechaProgramada}
+                      onChange={e => setForm({ ...form, fechaProgramada: e.target.value, horaProgramada: '' })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Hora *</label>
+                    <input type="time" required
+                      min={minHora}
+                      value={form.horaProgramada}
+                      onChange={e => setForm({ ...form, horaProgramada: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500" />
+                    {form.fechaProgramada === hoy() && (
+                      <p className="text-xs text-gray-400 mt-1">Mínimo: {horaActual()} (hora actual)</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Prioridad */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de prioridad</label>
+                  <select value={form.tipoPrioridad}
+                    onChange={e => setForm({ ...form, tipoPrioridad: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                    <option value="NORMAL">Normal</option>
+                    <option value="EMERGENCIA">Emergencia</option>
+                  </select>
+                </div>
+
+                {form.tipoPrioridad === 'EMERGENCIA' && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">
+                      Motivo de emergencia *
+                    </label>
+                    <textarea required rows={2}
+                      value={form.motivoEmergencia}
+                      onChange={e => setForm({ ...form, motivoEmergencia: e.target.value })}
+                      placeholder="Describe el motivo de la emergencia..."
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 resize-none" />
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={cerrarModal}
+                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={guardando}
+                    className="flex-1 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors">
+                    {guardando ? 'Guardando...' : 'Guardar Turno'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

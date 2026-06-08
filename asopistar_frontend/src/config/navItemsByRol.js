@@ -58,8 +58,8 @@ const NAV_ITEMS = {
   // ── Gerente de Planta ────────────────────────────────────────────────────
   ROLE_GERENTE_PLANTA: [
     { to: '/dashboard',        icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/productores',      icon: Users,           label: 'Productores' },
-    { to: '/produccion',       icon: Fish,            label: 'Producción' },
+    // { to: '/productores',      icon: Users,           label: 'Productores' },
+    // { to: '/produccion',       icon: Fish,            label: 'Producción' },
     { to: '/calendario',       icon: CalendarDays,    label: 'Calendario' },
     { to: '/recepciones',      icon: Truck,           label: 'Recepciones' },
     { to: '/procesamiento',    icon: ClipboardList,   label: 'Procesamiento' },
@@ -142,11 +142,11 @@ const RUTAS_POR_ROL = {
     '/admin/solicitudes', '/admin/usuarios',                        // ← RESTAURADO
   ],
   ROLE_GERENTE_PLANTA: [
-    '/dashboard', '/productores', '/produccion', '/calendario', '/recepciones',
+    '/dashboard', '/calendario', '/recepciones',
     '/procesamiento', '/almacenamiento', '/reportes', '/configuracion',
   ],
   ROLE_BIOLOGO: [
-    '/dashboard', '/produccion', '/calendario', '/reportes', '/configuracion',
+    '/dashboard', '/reportes', '/configuracion',
   ],
   ROLE_GERENTE_COMERCIAL: [
     '/dashboard', '/logistica', '/clientes', '/puntos-venta',
