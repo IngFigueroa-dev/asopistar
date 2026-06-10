@@ -48,6 +48,9 @@ export default function Insumos() {
   // ── Identidad del usuario ───────────────────────────────────
   const rol         = localStorage.getItem('rol') || ''
   const esProductor = rol === 'ROLE_PRODUCTOR'
+  const esContadora = rol === 'ROLE_CONTADORA'
+  // La contadora solo puede ver — no crear, editar, vender ni mover
+  const soloLectura = esProductor || esContadora
 
   const [tab, setTab]               = useState('inventario')
   const [insumos, setInsumos]       = useState([])
@@ -71,13 +74,20 @@ export default function Insumos() {
     setError(null)
     try {
       if (esProductor) {
-        // ── PRODUCTOR: solo carga insumos (lo único que puede ver) ──────
-        // No llama a getVentas(), getMovimientos() ni getProductoresActivos()
-        // porque esos endpoints requieren permisos que el productor no tiene.
+        // ── PRODUCTOR: solo carga insumos ───────────────────────────────
         const ins = await getInsumos()
         setInsumos(ins.data)
         setVentas([])
         setMovimientos([])
+        setProductores([])
+      } else if (esContadora) {
+        // ── CONTADORA: carga insumos, ventas y movimientos (solo lectura)
+        const [ins, vts, movs] = await Promise.all([
+          getInsumos(), getVentas(), getMovimientos()
+        ])
+        setInsumos(ins.data)
+        setVentas(vts.data)
+        setMovimientos(movs.data)
         setProductores([])
       } else {
         // ── Resto de roles: carga todo en paralelo ───────────────────────
@@ -183,11 +193,11 @@ export default function Insumos() {
           insumos={insumos}
           busqueda={busqueda}
           setBusqueda={setBusqueda}
-          onCrear={esProductor ? null : () => setModalInsumo('crear')}
-          onEditar={esProductor ? null : (ins) => setModalInsumo(ins)}
-          onDesactivar={esProductor ? null : (ins) => setConfirmDesactivar(ins)}
+          onCrear={soloLectura ? null : () => setModalInsumo('crear')}
+          onEditar={soloLectura ? null : (ins) => setModalInsumo(ins)}
+          onDesactivar={soloLectura ? null : (ins) => setConfirmDesactivar(ins)}
           loading={loading}
-          esProductor={esProductor}
+          esProductor={soloLectura}
         />
       )}
       {tabActivo === 'ventas' && !esProductor && (
@@ -195,8 +205,8 @@ export default function Insumos() {
           ventas={ventas}
           busqueda={busqueda}
           setBusqueda={setBusqueda}
-          onNuevaVenta={() => setModalVenta(true)}
-          onMarcarPagado={async (id) => {
+          onNuevaVenta={esContadora ? null : () => setModalVenta(true)}
+          onMarcarPagado={esContadora ? null : async (id) => {
             await marcarVentaPagada(id)
             cargarDatos()
           }}
@@ -208,7 +218,7 @@ export default function Insumos() {
           movimientos={movimientos}
           busqueda={busqueda}
           setBusqueda={setBusqueda}
-          onNuevoMovimiento={() => setModalMovimiento(true)}
+          onNuevoMovimiento={esContadora ? null : () => setModalMovimiento(true)}
           loading={loading}
         />
       )}
@@ -408,12 +418,14 @@ function TabVentas({ ventas, busqueda, setBusqueda, onNuevaVenta, onMarcarPagado
             className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
-        <button
-          onClick={onNuevaVenta}
-          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-        >
-          <Plus size={15} /> Nueva Venta
-        </button>
+        {onNuevaVenta && (
+          <button
+            onClick={onNuevaVenta}
+            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+          >
+            <Plus size={15} /> Nueva Venta
+          </button>
+        )}
       </div>
 
       {loading ? <SkeletonTable cols={5} /> : (
@@ -531,12 +543,14 @@ function TabMovimientos({ movimientos, busqueda, setBusqueda, onNuevoMovimiento,
             className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
-        <button
-          onClick={onNuevoMovimiento}
-          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-        >
-          <Plus size={15} /> Nuevo Movimiento
-        </button>
+        {onNuevoMovimiento && (
+          <button
+            onClick={onNuevoMovimiento}
+            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+          >
+            <Plus size={15} /> Nuevo Movimiento
+          </button>
+        )}
       </div>
 
       {loading ? <SkeletonTable cols={7} /> : (

@@ -13,7 +13,11 @@ const fmt = (n) =>
 
 const fmtDate = (iso) => {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("es-CO", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleString("es-CO", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+    timeZone: "America/Bogota",
+  });
 };
 
 const TIPOS_INGRESO = [
@@ -67,19 +71,25 @@ const ModalRegistrarIngreso = ({ onClose, onSuccess }) => {
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState("");
 
+  const [productores, setProductores] = useState([]);
   const [form, setForm] = useState({
-    fecha: new Date().toISOString().slice(0, 16),
+    fecha: new Date().toLocaleString("sv-SE", { timeZone: "America/Bogota" }).slice(0, 16),
     concepto: "", tipoIngreso: "", valorTotal: "",
-    idCliente: "", idEnvio: "", observaciones: "",
+    idCliente: "", idEnvio: "", idProductor: "", observaciones: "",
   });
 
   useEffect(() => {
     const load = async () => {
       setLoadingForm(true);
       try {
-        const [cRes, eRes] = await Promise.all([api.get("/clientes"), api.get("/envios")]);
+        const [cRes, eRes, pRes] = await Promise.all([
+          api.get("/clientes"),
+          api.get("/envios"),
+          api.get("/productores/activos"),
+        ]);
         setClientes(cRes.data);
         setEnvios(eRes.data.filter((e) => e.estado === "ENTREGADO"));
+        setProductores(pRes.data);
       } catch (err) {
         const s = err.response?.status;
         setError(s === 403 ? "Sin permisos para cargar el formulario." : "Error cargando datos.");
@@ -92,9 +102,17 @@ const ModalRegistrarIngreso = ({ onClose, onSuccess }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === "tipoIngreso") setForm((f) => ({ ...f, tipoIngreso: value, idEnvio: "" }));
-    else setForm((f) => ({ ...f, [name]: value }));
+    if (name === "tipoIngreso") {
+      setForm((f) => ({ ...f, tipoIngreso: value, idCliente: "", idEnvio: "", idProductor: "" }));
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+    }
   };
+
+  // Helpers para clasificar el tipo seleccionado
+  const esVentaPescado    = form.tipoIngreso === "VENTA_PESCADO";
+  const esVentaInsumos    = form.tipoIngreso === "VENTA_ALEVINOS" || form.tipoIngreso === "VENTA_CONCENTRADO";
+  const esOtro            = form.tipoIngreso === "OTRO";
 
   const handleSubmit = async () => {
     setError("");
@@ -108,8 +126,9 @@ const ModalRegistrarIngreso = ({ onClose, onSuccess }) => {
         concepto:      form.concepto.trim(),
         tipoIngreso:   form.tipoIngreso,
         valorTotal:    parseFloat(form.valorTotal),
-        idCliente:     form.idCliente ? parseInt(form.idCliente) : null,
-        idEnvio:       form.idEnvio   ? parseInt(form.idEnvio)   : null,
+        idCliente:     form.idCliente    ? parseInt(form.idCliente)    : null,
+        idEnvio:       form.idEnvio      ? parseInt(form.idEnvio)      : null,
+        idProductor:   form.idProductor  ? parseInt(form.idProductor)  : null,
         observaciones: form.observaciones.trim() || null,
       });
       onSuccess(); onClose();
@@ -183,20 +202,49 @@ const ModalRegistrarIngreso = ({ onClose, onSuccess }) => {
                   <span className="text-teal-900 text-xl font-bold">{fmt(form.valorTotal)}</span>
                 </div>
               )}
-              <div>
-                <label className={labelCls}><Building2 size={12} className="inline mr-1" />Cliente (opcional)</label>
-                <select name="idCliente" value={form.idCliente} onChange={handleChange} className={inputCls}>
-                  <option value="">Sin cliente asociado</option>
-                  {clientes.map((c) => <option key={c.idCliente} value={c.idCliente}>{c.razonSocial} — {c.nit}</option>)}
-                </select>
-              </div>
-              {form.tipoIngreso === "VENTA_PESCADO" && (
-                <div>
-                  <label className={labelCls}>Envío asociado (opcional)</label>
-                  <select name="idEnvio" value={form.idEnvio} onChange={handleChange} className={inputCls}>
-                    <option value="">Sin envío asociado</option>
-                    {envios.map((e) => <option key={e.idEnvio} value={e.idEnvio}>#{e.idEnvio} — {e.destinoCiudad} — {fmtDate(e.fechaEnvio)}</option>)}
-                  </select>
+              {/* ── Campos contextuales según tipo de ingreso ─────────── */}
+              {esVentaPescado && (
+                <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 size={12} /> Venta a cliente externo
+                  </p>
+                  <div>
+                    <label className={labelCls}>Cliente (opcional)</label>
+                    <select name="idCliente" value={form.idCliente} onChange={handleChange} className={inputCls}>
+                      <option value="">Sin cliente asociado</option>
+                      {clientes.map((c) => <option key={c.idCliente} value={c.idCliente}>{c.razonSocial} — {c.nit}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Envío asociado (opcional)</label>
+                    <select name="idEnvio" value={form.idEnvio} onChange={handleChange} className={inputCls}>
+                      <option value="">Sin envío asociado</option>
+                      {envios.map((e) => <option key={e.idEnvio} value={e.idEnvio}>#{e.idEnvio} — {e.destinoCiudad} — {fmtDate(e.fechaEnvio)}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+              {esVentaInsumos && (
+                <div className="space-y-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 size={12} /> Venta a productor asociado
+                  </p>
+                  <div>
+                    <label className={labelCls}>Productor *</label>
+                    <select name="idProductor" value={form.idProductor} onChange={handleChange} className={inputCls}>
+                      <option value="">Seleccionar productor...</option>
+                      {productores.map((p) => (
+                        <option key={p.idProductor} value={p.idProductor}>
+                          {p.nombre1} {p.apellido1} — Doc: {p.documento}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+              {!form.tipoIngreso && (
+                <div className="bg-stone-50 border border-stone-200 rounded-xl p-4 text-center">
+                  <p className="text-xs text-stone-400">Selecciona el tipo de ingreso para ver los campos correspondientes</p>
                 </div>
               )}
               <div>
