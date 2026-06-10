@@ -137,7 +137,7 @@ public class SecurityConfig {
 
                 // ── Clientes y puntos de venta ────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/clientes/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA)
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA, CONTADORA)
                 .requestMatchers(HttpMethod.POST, "/clientes/**")
                     .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
                 .requestMatchers(HttpMethod.PUT, "/clientes/**")
@@ -150,6 +150,8 @@ public class SecurityConfig {
                     .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
 
                 // ── Logística ─────────────────────────────────────────────────
+                .requestMatchers(HttpMethod.GET, "/envios/**")
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA, SECRETARIA, CONTADORA)
                 .requestMatchers("/envios/**")
                     .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA, SECRETARIA)
 
