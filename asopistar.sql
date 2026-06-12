@@ -1209,3 +1209,49 @@ CREATE TABLE IF NOT EXISTS negocio.auditoria_usuario (
 CREATE INDEX IF NOT EXISTS idx_auditoria_usuario  ON negocio.auditoria_usuario(id_usuario);
 CREATE INDEX IF NOT EXISTS idx_auditoria_fecha     ON negocio.auditoria_usuario(fecha DESC);
 CREATE INDEX IF NOT EXISTS idx_auditoria_accion    ON negocio.auditoria_usuario(accion);
+
+
+
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- MIGRACIÓN: Capacidad Cuarto Frío + Configuración de Producción
+-- Ejecutar en orden
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- 1. Capacidad del cuarto frío (registro único)
+CREATE TABLE negocio.capacidad_cuarto_frio (
+    id_capacidad      SERIAL PRIMARY KEY,
+    capacidad_max_kg  DECIMAL(10,2) NOT NULL,  -- kg máximos que acepta el cuarto frío
+    descripcion       VARCHAR(100),
+    fecha_actualizacion TIMESTAMP NOT NULL DEFAULT now(),
+    actualizado_por   VARCHAR(60)              -- email del usuario que lo modificó
+);
+
+-- Insertar valor inicial (ajustar según la capacidad real)
+INSERT INTO negocio.capacidad_cuarto_frio (capacidad_max_kg, descripcion, actualizado_por)
+VALUES (10000.00, 'Capacidad inicial del cuarto frío ASOPISTAR', 'sistema');
+
+-- 2. Configuración de producción por especie
+CREATE TABLE negocio.configuracion_produccion (
+    id_config       SERIAL PRIMARY KEY,
+    id_especie      INT NOT NULL REFERENCES negocio.especie(id_especie),
+    ciclo_meses     INT NOT NULL,              -- duración esperada del ciclo en meses
+    peso_cosecha_kg DECIMAL(10,2),             -- peso promedio esperado al momento de cosechar
+    activo          BOOLEAN DEFAULT true,
+    observaciones   VARCHAR(150),
+    fecha_creacion  TIMESTAMP NOT NULL DEFAULT now(),
+    fecha_actualizacion TIMESTAMP,
+    actualizado_por VARCHAR(60),
+    UNIQUE (id_especie)                        -- una configuración por especie
+);
+
+-- Insertar configuraciones iniciales para las especies existentes
+-- (ajustar ciclo_meses y peso_cosecha_kg según criterio técnico de ASOPISTAR)
+INSERT INTO negocio.configuracion_produccion (id_especie, ciclo_meses, peso_cosecha_kg, observaciones, actualizado_por)
+SELECT id_especie,
+       6,      -- ciclo por defecto: 6 meses
+       0.80,   -- peso objetivo por defecto: 800g
+       'Configuración inicial — ajustar según especie',
+       'sistema'
+FROM negocio.especie;
