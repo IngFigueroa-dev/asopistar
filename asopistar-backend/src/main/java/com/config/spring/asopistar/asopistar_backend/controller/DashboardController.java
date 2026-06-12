@@ -4,6 +4,7 @@ import com.config.spring.asopistar.asopistar_backend.dto.response.AlertaDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardComercialDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardFinanzasDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardPlantaDTO;
+import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardInsumosDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardProduccionDTO;
 import com.config.spring.asopistar.asopistar_backend.service.DashboardService;
 import lombok.RequiredArgsConstructor;
@@ -128,6 +129,15 @@ public class DashboardController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // GET /api/dashboard/insumos
+    // ─────────────────────────────────────────────────────────────────────────
+    @GetMapping("/insumos")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR_GENERAL', 'ROLE_VENDEDOR_INSUMOS')")
+    public ResponseEntity<DashboardInsumosDTO> insumos() {
+        return ResponseEntity.ok(dashboardService.obtenerInsumos());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // GET /api/dashboard/alertas
     // ─────────────────────────────────────────────────────────────────────────
     /**
@@ -145,7 +155,8 @@ public class DashboardController {
           'ROLE_GERENTE_COMERCIAL',
           'ROLE_CONTADORA',
           'ROLE_BIOLOGO',
-          'ROLE_SECRETARIA'
+          'ROLE_SECRETARIA',
+          'ROLE_VENDEDOR_INSUMOS'
         )
         """)
     public ResponseEntity<List<AlertaDTO>> alertas() {

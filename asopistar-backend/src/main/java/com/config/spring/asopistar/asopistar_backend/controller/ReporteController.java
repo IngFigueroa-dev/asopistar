@@ -40,7 +40,7 @@ public class ReporteController {
 
     // ─── GET /reportes/produccion ─────────────────────────────────────────────
     @GetMapping("/produccion")
-    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + BIOLOGO + "','" + GERENTE_PLANTA + "','" + GERENTE_COMERCIAL + "')")
+    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + BIOLOGO + "','" + GERENTE_PLANTA + "','" + GERENTE_COMERCIAL + "','" + SECRETARIA + "')")
     public ResponseEntity<List<ReporteProduccionResponseDTO>> getReporteProduccion(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
@@ -91,7 +91,7 @@ public class ReporteController {
 
     // ─── GET /reportes/turnos ─────────────────────────────────────────────────
     @GetMapping("/turnos")
-    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + GERENTE_PLANTA + "','" + GERENTE_COMERCIAL + "')")
+    @PreAuthorize("hasAnyAuthority('" + ADMIN + "','" + GERENTE_PLANTA + "','" + GERENTE_COMERCIAL + "','" + SECRETARIA + "')")
     public ResponseEntity<List<ReporteTurnoResponseDTO>> getReporteTurnos(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,

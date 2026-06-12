@@ -8,6 +8,8 @@ import com.config.spring.asopistar.asopistar_backend.entity.Recepcion;
 import com.config.spring.asopistar.asopistar_backend.entity.TurnoPesca;
 import com.config.spring.asopistar.asopistar_backend.exception.BusinessException;
 import com.config.spring.asopistar.asopistar_backend.exception.ResourceNotFoundException;
+import com.config.spring.asopistar.asopistar_backend.repository.CapacidadCuartoFrioRepository;
+import com.config.spring.asopistar.asopistar_backend.repository.LoteCuartoFrioRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.ProcesamientoRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.ProductorRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.RecepcionRepository;
@@ -16,6 +18,7 @@ import com.config.spring.asopistar.asopistar_backend.service.RecepcionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,19 +27,25 @@ import java.util.stream.Collectors;
 @Transactional
 public class RecepcionServiceImpl implements RecepcionService {
 
-    private final RecepcionRepository      recepcionRepo;
-    private final ProductorRepository      productorRepo;
-    private final TurnoPescaRepository     turnoRepo;
-    private final ProcesamientoRepository  procesamientoRepo;
+    private final RecepcionRepository          recepcionRepo;
+    private final ProductorRepository          productorRepo;
+    private final TurnoPescaRepository         turnoRepo;
+    private final ProcesamientoRepository      procesamientoRepo;
+    private final CapacidadCuartoFrioRepository capacidadRepo;
+    private final LoteCuartoFrioRepository      loteRepo;
 
     public RecepcionServiceImpl(RecepcionRepository recepcionRepo,
                                 ProductorRepository productorRepo,
                                 TurnoPescaRepository turnoRepo,
-                                ProcesamientoRepository procesamientoRepo) {
+                                ProcesamientoRepository procesamientoRepo,
+                                CapacidadCuartoFrioRepository capacidadRepo,
+                                LoteCuartoFrioRepository loteRepo) {
         this.recepcionRepo      = recepcionRepo;
         this.productorRepo      = productorRepo;
         this.turnoRepo          = turnoRepo;
         this.procesamientoRepo  = procesamientoRepo;
+        this.capacidadRepo      = capacidadRepo;
+        this.loteRepo           = loteRepo;
     }
 
     // ── Registrar nueva recepción ─────────────────────────────────────────────
@@ -55,6 +64,22 @@ public class RecepcionServiceImpl implements RecepcionService {
             throw new BusinessException(
                     "El turno #" + request.getIdTurno() + " no está en estado válido para recepción.");
         }
+
+        // ── Validar capacidad del cuarto frío ────────────────────────────────
+        capacidadRepo.findCapacidadMaxKg().ifPresent(capacidadMax -> {
+            java.math.BigDecimal kilosActuales = loteRepo.sumKilosDisponibles();
+            if (kilosActuales == null) kilosActuales = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal kilosTras = kilosActuales.add(request.getKilosRecibidos());
+            if (kilosTras.compareTo(capacidadMax) > 0) {
+                java.math.BigDecimal disponibles = capacidadMax.subtract(kilosActuales);
+                throw new BusinessException(
+                    "El cuarto frío no tiene capacidad suficiente. " +
+                    "Capacidad máxima: " + capacidadMax.toPlainString() + " kg. " +
+                    "Actualmente almacenado: " + kilosActuales.toPlainString() + " kg. " +
+                    "Espacio disponible: " + disponibles.toPlainString() + " kg. " +
+                    "Kilos a recibir: " + request.getKilosRecibidos().toPlainString() + " kg.");
+            }
+        });
 
         Recepcion recepcion = new Recepcion();
         recepcion.setFechaHora(LocalDateTime.now());

@@ -54,7 +54,7 @@ public class PuntoVentaController {
 
     // ── POST /puntos-venta ───────────────────────────────────────────────────
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR_GENERAL', 'ROLE_GERENTE_COMERCIAL')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR_GENERAL', 'ROLE_GERENTE_COMERCIAL', 'ROLE_SECRETARIA')")
     public ResponseEntity<PuntoVentaResponseDTO> crear(
             @Valid @RequestBody PuntoVentaRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.crear(request));
@@ -62,7 +62,7 @@ public class PuntoVentaController {
 
     // ── PUT /puntos-venta/{id} ───────────────────────────────────────────────
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR_GENERAL', 'ROLE_GERENTE_COMERCIAL')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR_GENERAL', 'ROLE_GERENTE_COMERCIAL', 'ROLE_SECRETARIA')")
     public ResponseEntity<PuntoVentaResponseDTO> actualizar(
             @PathVariable Integer id,
             @Valid @RequestBody PuntoVentaRequestDTO request) {

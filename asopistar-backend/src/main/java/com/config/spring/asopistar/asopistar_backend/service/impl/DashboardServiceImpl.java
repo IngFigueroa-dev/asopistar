@@ -16,7 +16,10 @@ import com.config.spring.asopistar.asopistar_backend.repository.SeguimientoSiemb
 import com.config.spring.asopistar.asopistar_backend.repository.TurnoPescaRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.EstanqueRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.ClienteRepository;
+import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardInsumosDTO;
 import com.config.spring.asopistar.asopistar_backend.repository.DetalleEnvioLoteRepository;
+import com.config.spring.asopistar.asopistar_backend.repository.InsumoRepository;
+import com.config.spring.asopistar.asopistar_backend.repository.VentaInsumoRepository;
 import com.config.spring.asopistar.asopistar_backend.repository.PuntoVentaRepository;
 import com.config.spring.asopistar.asopistar_backend.service.DashboardService;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +48,8 @@ public class DashboardServiceImpl implements DashboardService {
     private final PagoProductorRepository      pagoRepo;
     private final IngresoRepository            ingresoRepo;
     private final DetalleEnvioLoteRepository detalleEnvioLoteRepo;
+    private final InsumoRepository             insumoRepo;
+    private final VentaInsumoRepository        ventaInsumoRepo;
 
     // ── Helpers de fecha ──────────────────────────────────────────────────────
 
@@ -172,6 +177,42 @@ public class DashboardServiceImpl implements DashboardService {
      * - Envíos preparados sin despachar: > 0 genera alerta BAJA
      * - Cartera pendiente: > 0 genera alerta MEDIA
      */
+    // ── Insumos ───────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public DashboardInsumosDTO obtenerInsumos() {
+        int mes  = mesActual();
+        int anio = anioActual();
+
+        long totalInsumos   = insumoRepo.count();
+        long insumosActivos = insumoRepo.findByEstado("ACTIVO").size();
+        long bajoStock      = insumoRepo.findBajoStock().size();
+        long ventasMes      = ventaInsumoRepo.findAll().stream()
+            .filter(v -> v.getFecha() != null
+                && v.getFecha().getMonthValue() == mes
+                && v.getFecha().getYear() == anio)
+            .count();
+        java.math.BigDecimal valorVentasMes = ventaInsumoRepo.findAllWithDetalles().stream()
+            .filter(v -> v.getFecha() != null
+                && v.getFecha().getMonthValue() == mes
+                && v.getFecha().getYear() == anio)
+            .flatMap(v -> v.getDetalles().stream())
+            .map(d -> d.getPrecioUnitario()
+                .multiply(java.math.BigDecimal.valueOf(d.getCantidad())))
+            .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        long ventasTotal = ventaInsumoRepo.count();
+
+        return DashboardInsumosDTO.builder()
+            .totalInsumos(totalInsumos)
+            .insumosActivos(insumosActivos)
+            .insumosBajoStock(bajoStock)
+            .ventasMes(ventasMes)
+            .valorVentasMes(valorVentasMes)
+            .ventasTotal(ventasTotal)
+            .build();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<AlertaDTO> obtenerAlertas() {
@@ -240,6 +281,17 @@ public class DashboardServiceImpl implements DashboardService {
                     .modulo("FINANZAS")
                     .titulo("Cartera pendiente de cobro")
                     .descripcion("Hay $" + String.format("%,.0f", cartera) + " en ingresos sin cobrar completamente.")
+                    .build());
+        }
+
+        // ── ALTA: insumos bajo stock mínimo ──────────────────────────────────────
+        long bajoStock = insumoRepo.findBajoStock().size();
+        if (bajoStock > 0) {
+            alertas.add(AlertaDTO.builder()
+                    .prioridad("ALTA")
+                    .modulo("INSUMOS")
+                    .titulo("Insumos bajo stock mínimo")
+                    .descripcion(bajoStock + " insumo(s) han caído por debajo del stock mínimo configurado.")
                     .build());
         }
 

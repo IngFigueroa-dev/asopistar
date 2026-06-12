@@ -50,7 +50,7 @@ public class ClienteController {
 
     // ── PUT /clientes/{id} ──────────────────────────────────────
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR_GENERAL','ROLE_GERENTE_COMERCIAL')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR_GENERAL','ROLE_GERENTE_COMERCIAL','ROLE_SECRETARIA')")
     public ResponseEntity<ClienteResponseDTO> actualizar(
             @PathVariable Integer id,
             @Valid @RequestBody ClienteRequestDTO dto) {

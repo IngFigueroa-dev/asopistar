@@ -82,7 +82,7 @@ public class SecurityConfig {
                 // El PRODUCTOR puede ver y crear sus propios estanques,
                 // pero NO puede editar ni eliminar (eso es del staff).
                 .requestMatchers(HttpMethod.GET, "/estanques/**")
-                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR)
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR, SECRETARIA)
                 .requestMatchers(HttpMethod.POST, "/estanques/**")
                     .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR)
                 .requestMatchers(HttpMethod.PUT, "/estanques/**")
@@ -93,7 +93,7 @@ public class SecurityConfig {
                 // ── Especies — separado por método para dar acceso al PRODUCTOR ──
                 // El PRODUCTOR puede ver el catálogo y agregar nuevas especies.
                 .requestMatchers(HttpMethod.GET, "/especies/**")
-                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR)
+                    .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR, SECRETARIA)
                 .requestMatchers(HttpMethod.POST, "/especies/**")
                     .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA, PRODUCTOR)
                 .requestMatchers(HttpMethod.PUT, "/especies/**")
@@ -111,7 +111,7 @@ public class SecurityConfig {
                 // ── Siembras — el PRODUCTOR puede leer y crear ────────────────
                 .requestMatchers(HttpMethod.GET, "/siembras/**")
                     .hasAnyAuthority(ADMIN, BIOLOGO, GERENTE_PLANTA,
-                        GERENTE_COMERCIAL, PRODUCTOR)
+                        GERENTE_COMERCIAL, PRODUCTOR, SECRETARIA)
                 .requestMatchers(HttpMethod.POST, "/siembras/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA, PRODUCTOR)
                 // PUT de siembras: solo staff (el productor no edita siembras manualmente)
@@ -122,32 +122,32 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/recepciones/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CONTADORA, SECRETARIA, GERENTE_COMERCIAL)
                 .requestMatchers(HttpMethod.POST, "/recepciones/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, SECRETARIA)
 
                 // ── Turnos de pesca — PRODUCTOR puede leer y crear ───────────
                 // El PRODUCTOR reserva su propio turno desde Produccion.jsx.
                 .requestMatchers("/turnos-pesca/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, PRODUCTOR)
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, PRODUCTOR, SECRETARIA)
 
                 // ── Procesamiento y cuarto frío ───────────────────────────────
                 .requestMatchers("/procesamientos/**")
                     .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO)
                 .requestMatchers("/lotes-cuarto-frio/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO, GERENTE_COMERCIAL)
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO, GERENTE_COMERCIAL, SECRETARIA)
 
                 // ── Clientes y puntos de venta ────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/clientes/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA, CONTADORA)
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA, CONTADORA, SECRETARIA)
                 .requestMatchers(HttpMethod.POST, "/clientes/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, SECRETARIA)
                 .requestMatchers(HttpMethod.PUT, "/clientes/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, SECRETARIA)
                 .requestMatchers(HttpMethod.GET, "/puntos-venta/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA)
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, GERENTE_PLANTA, SECRETARIA)
                 .requestMatchers(HttpMethod.POST, "/puntos-venta/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, SECRETARIA)
                 .requestMatchers(HttpMethod.PUT, "/puntos-venta/**")
-                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL)
+                    .hasAnyAuthority(ADMIN, GERENTE_COMERCIAL, SECRETARIA)
 
                 // ── Logística ─────────────────────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/envios/**")
@@ -184,6 +184,20 @@ public class SecurityConfig {
                     .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS, CONTADORA)
                 .requestMatchers(HttpMethod.POST, "/movimientos-insumo/**")
                     .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS)
+
+                // ── Capacidad cuarto frio ─────────────────────────────────────
+                .requestMatchers(HttpMethod.GET, "/capacidad-cuarto-frio/**")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, CUARTO_FRIO, SECRETARIA)
+                .requestMatchers(HttpMethod.PUT, "/capacidad-cuarto-frio/**")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
+
+                // ── Configuracion de produccion ───────────────────────────────
+                .requestMatchers(HttpMethod.GET, "/configuracion-produccion/**")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA, BIOLOGO)
+                .requestMatchers(HttpMethod.POST, "/configuracion-produccion/**")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
+                .requestMatchers(HttpMethod.PUT, "/configuracion-produccion/**")
+                    .hasAnyAuthority(ADMIN, GERENTE_PLANTA)
 
                 // ── Reportes ──────────────────────────────────────────────────
                 .requestMatchers("/reportes/**")

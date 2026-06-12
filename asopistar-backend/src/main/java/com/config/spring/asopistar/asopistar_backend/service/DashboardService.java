@@ -3,6 +3,7 @@ package com.config.spring.asopistar.asopistar_backend.service;
 import com.config.spring.asopistar.asopistar_backend.dto.response.AlertaDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardComercialDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardFinanzasDTO;
+import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardInsumosDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardPlantaDTO;
 import com.config.spring.asopistar.asopistar_backend.dto.response.DashboardProduccionDTO;
 
@@ -28,4 +29,7 @@ public interface DashboardService {
      * El servicio filtra solo las alertas que aplican según las condiciones actuales.
      */
     List<AlertaDTO> obtenerAlertas();
+
+    /** KPIs de insumos: stock, ventas del mes, insumos bajo minimo. */
+    DashboardInsumosDTO obtenerInsumos();
 }
