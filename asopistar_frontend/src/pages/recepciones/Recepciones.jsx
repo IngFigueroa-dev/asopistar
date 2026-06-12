@@ -9,13 +9,14 @@ function Recepciones() {
   const [mostrarModal, setMostrarModal] = useState(false)
   const [error,       setError]       = useState('')
   const [turnoSeleccionado, setTurnoSeleccionado] = useState(null)
+  const [capacidad,         setCapacidad]         = useState(null)
   const [form, setForm] = useState({
     fechaHora: '', kilosRecibidos: '',
     observaciones: '', idProductor: '', idTurno: '',
   })
 
   useEffect(() => {
-    Promise.all([cargarRecepciones(), cargarTurnos()])
+    Promise.all([cargarRecepciones(), cargarTurnos(), cargarCapacidad()])
   }, [])
 
   const cargarRecepciones = async () => {
@@ -24,6 +25,13 @@ function Recepciones() {
       setRecepciones(res.data)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
+  }
+
+  const cargarCapacidad = async () => {
+    try {
+      const res = await api.get('/capacidad-cuarto-frio')
+      setCapacidad(res.data)
+    } catch { /* si no tiene acceso, silencioso */ }
   }
 
   const cargarTurnos = async () => {
@@ -185,12 +193,12 @@ function Recepciones() {
       {/* Modal */}
       {mostrarModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
-            <div className="p-6 border-b border-gray-100">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[92vh] flex flex-col">
+            <div className="p-6 border-b border-gray-100 shrink-0">
               <h2 className="text-lg font-bold text-gray-800">Nueva Recepción</h2>
               <p className="text-sm text-gray-500 mt-1">Registra la entrada de pescado a la planta</p>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4 overflow-y-auto">
 
               {/* Turno de pesca */}
               <div>
@@ -276,6 +284,44 @@ function Recepciones() {
                   rows={3} placeholder="Estado del pescado, condiciones de entrega..."
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 resize-none" />
               </div>
+
+              {/* Panel de capacidad del cuarto frío */}
+              {capacidad && (
+                <div className={`rounded-xl border p-4 ${
+                  capacidad.porcentajeOcupacion >= 90
+                    ? 'bg-red-50 border-red-200'
+                    : capacidad.porcentajeOcupacion >= 70
+                    ? 'bg-amber-50 border-amber-200'
+                    : 'bg-teal-50 border-teal-200'
+                }`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${
+                    capacidad.porcentajeOcupacion >= 90 ? 'text-red-700'
+                    : capacidad.porcentajeOcupacion >= 70 ? 'text-amber-700'
+                    : 'text-teal-700'
+                  }`}>❄️ Capacidad cuarto frío</p>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-gray-600">Disponible:</span>
+                    <span className="font-bold">{Number(capacidad.kilosDisponibles).toLocaleString('es-CO')} kg</span>
+                  </div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-gray-600">Ocupado:</span>
+                    <span className="font-semibold">{Number(capacidad.kilosActuales).toLocaleString('es-CO')} kg de {Number(capacidad.capacidadMaxKg).toLocaleString('es-CO')} kg</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className={`h-2 rounded-full transition-all ${
+                      capacidad.porcentajeOcupacion >= 90 ? 'bg-red-500'
+                      : capacidad.porcentajeOcupacion >= 70 ? 'bg-amber-400'
+                      : 'bg-teal-500'
+                    }`} style={{ width: `${Math.min(capacidad.porcentajeOcupacion, 100)}%` }} />
+                  </div>
+                  <p className="text-xs text-right mt-1 text-gray-500">{capacidad.porcentajeOcupacion}% ocupado</p>
+                  {form.kilosRecibidos && Number(form.kilosRecibidos) > Number(capacidad.kilosDisponibles) && (
+                    <p className="text-xs text-red-600 font-semibold mt-2">
+                      ⚠️ Los kilos a recibir ({Number(form.kilosRecibidos).toLocaleString('es-CO')} kg) superan el espacio disponible.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">

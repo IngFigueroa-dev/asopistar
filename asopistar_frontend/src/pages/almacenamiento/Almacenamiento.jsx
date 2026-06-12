@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import api from '../../services/api'
 
-const CAPACIDAD_MAX_KG = 500
+// Capacidad cargada dinámicamente desde /capacidad-cuarto-frio
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -24,6 +24,7 @@ const estadoBadge = (decision) => {
 
 function Almacenamiento() {
   const [lotes,       setLotes]       = useState([])
+  const [capacidadMax, setCapacidadMax] = useState(10000) // fallback hasta que cargue
   const [clientes,    setClientes]    = useState([])
   const [puntos,      setPuntos]      = useState([])
   const [loading,     setLoading]     = useState(true)
@@ -44,14 +45,16 @@ function Almacenamiento() {
   const cargarTodo = async () => {
     try {
       setLoading(true)
-      const [lotesRes, clientesRes, puntosRes] = await Promise.all([
+      const [lotesRes, clientesRes, puntosRes, capRes] = await Promise.all([
         api.get('/lotes-cuarto-frio'),
         api.get('/clientes').catch(() => ({ data: [] })),
         api.get('/puntos-venta').catch(() => ({ data: [] })),
+        api.get('/capacidad-cuarto-frio').catch(() => ({ data: null })),
       ])
       setLotes(lotesRes.data)
       setClientes(clientesRes.data)
       setPuntos(puntosRes.data)
+      if (capRes.data?.capacidadMaxKg) setCapacidadMax(Number(capRes.data.capacidadMaxKg))
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
@@ -62,8 +65,8 @@ function Almacenamiento() {
   const despachados       = lotes.filter(l => l.estadoDecision === 'DESPACHADO')
   const kilosStock        = almacenados.reduce((a, l) => a + (parseFloat(l.kilos) || 0), 0)
   const kilosPendientes   = pendientes.reduce((a, l) => a + (parseFloat(l.kilos) || 0), 0)
-  const pct               = Math.min(((kilosStock + kilosPendientes) / CAPACIDAD_MAX_KG) * 100, 100)
-  const kilosLibres       = Math.max(CAPACIDAD_MAX_KG - kilosStock - kilosPendientes, 0)
+  const pct               = Math.min(((kilosStock + kilosPendientes) / capacidadMax) * 100, 100)
+  const kilosLibres       = Math.max(capacidadMax - kilosStock - kilosPendientes, 0)
 
   const barraColor = pct >= 90 ? 'bg-red-500'
                    : pct >= 70 ? 'bg-orange-400'
@@ -192,7 +195,7 @@ function Almacenamiento() {
             <span className="text-sm font-semibold text-gray-700">Capacidad del Cuarto Frío</span>
           </div>
           <span className="text-sm font-bold text-gray-700">
-            {(kilosStock + kilosPendientes).toFixed(1)} / {CAPACIDAD_MAX_KG} kg ({pct.toFixed(1)}%)
+            {(kilosStock + kilosPendientes).toFixed(1)} / {capacidadMax.toLocaleString('es-CO')} kg ({pct.toFixed(1)}%)
           </span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">

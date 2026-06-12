@@ -271,6 +271,7 @@ function Reportes() {
     ROLE_GERENTE_PLANTA:    ['recepciones', 'produccion', 'lotes', 'envios', 'turnos'],
     ROLE_GERENTE_COMERCIAL: ['produccion', 'lotes', 'envios', 'turnos'],
     ROLE_CONTADORA:         ['recepciones', 'pagos'],
+    ROLE_SECRETARIA:        ['recepciones', 'produccion', 'envios', 'turnos'],
   }
   const permitidos = REPORTES_POR_ROL[rol] ?? null  // null = todos (admin, contadora, etc.)
 

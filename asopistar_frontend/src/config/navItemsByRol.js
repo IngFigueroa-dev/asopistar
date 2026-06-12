@@ -102,8 +102,12 @@ const NAV_ITEMS = {
   ROLE_SECRETARIA: [
     { to: '/dashboard',        icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/productores',      icon: Users,           label: 'Productores' },
+    { to: '/produccion',       icon: Fish,            label: 'Producción' },
+    { to: '/calendario',       icon: CalendarDays,    label: 'Calendario' },
     { to: '/recepciones',      icon: Truck,           label: 'Recepciones' },
     { to: '/logistica',        icon: Send,            label: 'Logística' },
+    { to: '/clientes',         icon: UserCheck,       label: 'Clientes' },
+    { to: '/puntos-venta',     icon: Store,           label: 'Puntos de Venta' },
     { to: '/reportes',         icon: BarChart3,       label: 'Reportes' },
     { to: '/configuracion',    icon: Settings,        label: 'Configuración' },
   ],
@@ -156,7 +160,8 @@ const RUTAS_POR_ROL = {
     '/dashboard', '/pagos', '/ingresos', '/insumos', '/reportes', '/configuracion',
   ],
   ROLE_SECRETARIA: [
-    '/dashboard', '/productores', '/recepciones', '/logistica',
+    '/dashboard', '/productores', '/produccion', '/calendario',
+    '/recepciones', '/logistica', '/clientes', '/puntos-venta',
     '/reportes', '/configuracion',
   ],
   ROLE_VENDEDOR_INSUMOS: [

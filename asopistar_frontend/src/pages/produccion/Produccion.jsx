@@ -38,10 +38,13 @@ const FORM_TURNO_INICIAL   = {
 
 function ProduccionGeneral() {
 
-  const rol         = localStorage.getItem('rol') || ''
-  const esProductor = rol === 'ROLE_PRODUCTOR'
-  const esBiologo   = false   // nunca llega aquí el biólogo
-  const idProductor = esProductor ? parseInt(localStorage.getItem('idProductor')) : null
+  const rol          = localStorage.getItem('rol') || ''
+  const esProductor  = rol === 'ROLE_PRODUCTOR'
+  const esSecretaria = rol === 'ROLE_SECRETARIA'
+  const esBiologo    = false   // nunca llega aquí el biólogo
+  // La secretaria tiene acceso de solo lectura: no puede crear ni modificar nada
+  const soloLectura  = esSecretaria
+  const idProductor  = esProductor ? parseInt(localStorage.getItem('idProductor')) : null
 
   const [siembras,          setSiembras]          = useState([])
   const [especies,          setEspecies]          = useState([])
@@ -310,10 +313,12 @@ function ProduccionGeneral() {
               </button>
             </>
           )}
-          <button onClick={() => { setErrorModal(''); setMostrarModalSiembra(true) }}
-            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors">
-            <Plus size={18} /> Nueva Siembra
-          </button>
+          {!soloLectura && (
+            <button onClick={() => { setErrorModal(''); setMostrarModalSiembra(true) }}
+              className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors">
+              <Plus size={18} /> Nueva Siembra
+            </button>
+          )}
         </div>
       </div>
 
@@ -1322,5 +1327,7 @@ function Produccion() {
   if (rol === 'ROLE_BIOLOGO') return <ProduccionBiologo />
   return <ProduccionGeneral />
 }
+// Nota: ROLE_SECRETARIA usa ProduccionGeneral con esSecretaria=true,
+// que oculta todos los botones de escritura y muestra solo lectura.
 
 export default Produccion

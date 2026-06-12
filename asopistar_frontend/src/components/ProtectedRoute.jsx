@@ -30,7 +30,7 @@ function ProtectedRoute({ children, requiredRol }) {
     '/productores', '/produccion', '/calendario', '/recepciones',
     '/procesamiento', '/almacenamiento', '/logistica', '/pagos',
     '/reportes', '/admin/solicitudes', '/admin/usuarios',
-    '/insumos', '/clientes', '/puntos-venta', '/ingresos',  // ← AGREGADAS
+    '/insumos', '/clientes', '/puntos-venta', '/ingresos', '/produccion', '/calendario',
   ]
 
   if (rutasConocidas.includes(rutaActual) && !tieneAcceso(rol, rutaActual)) {
