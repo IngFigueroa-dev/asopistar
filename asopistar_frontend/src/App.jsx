@@ -8,8 +8,9 @@ import VerificacionEmail  from './pages/auth/VerificacionEmail'
 import PendienteAprobacion from './pages/auth/PendienteAprobacion'
 
 // Layout y protección
-import Layout         from './components/layout/Layout'
-import ProtectedRoute from './components/ProtectedRoute'
+import Layout              from './components/layout/Layout'
+import ProtectedRoute      from './components/ProtectedRoute'
+import AccessibilityWidget from './components/AccessibilityWidget'
 
 // Páginas del sistema
 import Dashboard     from './pages/dashboard/Dashboard'
@@ -34,6 +35,7 @@ import GestionUsuarios   from './pages/admin/GestionUsuarios'
 
 function App() {
   return (
+    <>
     <BrowserRouter>
       <Routes>
 
@@ -92,6 +94,8 @@ function App() {
         />
       </Routes>
     </BrowserRouter>
+    <AccessibilityWidget />
+    </>
   )
 }
 

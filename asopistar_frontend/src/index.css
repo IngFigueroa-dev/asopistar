@@ -6,29 +6,147 @@
   --color-sidebar: #1a2332;
 }
 
-/* Accesibilidad */
-body.large-text {
-  font-size: 20px;
+/* ── Contraste — 3 niveles ───────────────────────────────────────────────── */
+
+/* Nivel 1: Invertido */
+body.contraste-inv {
+  filter: invert(100%) hue-rotate(180deg);
+}
+body.contraste-inv img,
+body.contraste-inv video,
+body.contraste-inv svg {
+  filter: invert(100%) hue-rotate(180deg);
 }
 
-body.high-contrast {
-  filter: contrast(150%);
+/* Nivel 2: Contraste oscuro — solo texto y bordes, sin tocar fondos */
+body.contraste-oscuro {
+  background-color: #0a0a0a !important;
+  color: #ffffff !important;
+}
+body.contraste-oscuro p,
+body.contraste-oscuro span,
+body.contraste-oscuro h1,
+body.contraste-oscuro h2,
+body.contraste-oscuro h3,
+body.contraste-oscuro h4,
+body.contraste-oscuro h5,
+body.contraste-oscuro label,
+body.contraste-oscuro td,
+body.contraste-oscuro th,
+body.contraste-oscuro li {
+  color: #ffffff !important;
+}
+body.contraste-oscuro .bg-white,
+body.contraste-oscuro [class*="bg-gray"],
+body.contraste-oscuro [class*="bg-slate"] {
+  background-color: #1a1a1a !important;
+}
+body.contraste-oscuro nav,
+body.contraste-oscuro aside,
+body.contraste-oscuro header,
+body.contraste-oscuro main {
+  background-color: #0f0f0f !important;
+}
+body.contraste-oscuro a { color: #4ade80 !important; }
+body.contraste-oscuro button { color: #ffffff !important; }
+
+/* Nivel 3: Contraste de luz — solo texto oscuro, sin tocar fondos */
+body.contraste-luz {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+body.contraste-luz p,
+body.contraste-luz span,
+body.contraste-luz h1,
+body.contraste-luz h2,
+body.contraste-luz h3,
+body.contraste-luz h4,
+body.contraste-luz h5,
+body.contraste-luz label,
+body.contraste-luz td,
+body.contraste-luz th,
+body.contraste-luz li {
+  color: #000000 !important;
+}
+body.contraste-luz a,
+body.contraste-luz button {
+  color: #0d6e68 !important;
+  font-weight: 700 !important;
 }
 
-body.alt-font {
-  font-family: Arial, sans-serif;
-  letter-spacing: 0.05em;
+/* ── Texto — escala desde html root para que rem de Tailwind responda ────── */
+/* Tailwind usa rem, al cambiar font-size en :root todo escala proporcional  */
+body.texto-md  :root, :root body.texto-md  { font-size: 18px !important; }
+body.texto-lg  :root, :root body.texto-lg  { font-size: 22px !important; }
+body.texto-xl  :root, :root body.texto-xl  { font-size: 26px !important; }
+body.texto-2xl :root, :root body.texto-2xl { font-size: 30px !important; }
+
+html:has(body.texto-md)  { font-size: 18px !important; }
+html:has(body.texto-lg)  { font-size: 22px !important; }
+html:has(body.texto-xl)  { font-size: 26px !important; }
+html:has(body.texto-2xl) { font-size: 30px !important; }
+
+/* Cuando el texto crece, los contenedores deben ser flexibles */
+html:has(body.texto-md) *,
+html:has(body.texto-lg) *,
+html:has(body.texto-xl) *,
+html:has(body.texto-2xl) * {
+  min-height: auto !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+/* Contenedores con altura fija de Tailwind — permitirles crecer */
+html:has(body.texto-lg) [class*="h-"],
+html:has(body.texto-xl) [class*="h-"],
+html:has(body.texto-2xl) [class*="h-"] {
+  height: auto !important;
+  min-height: unset !important;
+}
+/* Navlinks del sidebar y botones deben envolver texto */
+html:has(body.texto-lg) nav a,
+html:has(body.texto-xl) nav a,
+html:has(body.texto-2xl) nav a,
+html:has(body.texto-lg) button,
+html:has(body.texto-xl) button,
+html:has(body.texto-2xl) button {
+  height: auto !important;
+  white-space: normal !important;
+  padding-top: 0.4em !important;
+  padding-bottom: 0.4em !important;
+}
+/* Tablas — celdas deben adaptarse */
+html:has(body.texto-lg) td,
+html:has(body.texto-xl) td,
+html:has(body.texto-2xl) td {
+  white-space: normal !important;
+  min-width: 80px;
 }
 
-/* ------------- Dashboard -----------*/
+/* ── Cursor grande — Nivel 1 ─────────────────────────────────────────────── */
+body.cursor-grande,
+body.cursor-grande * {
+  cursor: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDQ4IDQ4Ij4KICA8cGF0aCBkPSJNOCA0IEw4IDM4IEwxOCAyOCBMMjYgNDQgTDMwIDQyIEwyMiAyNiBMMzYgMjYgWiIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzFhMjMzMiIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+') 8 4, default !important;
+}
 
+/* ── Máscara de lectura — Nivel 2 (ventana iluminada) ───────────────────── */
+/* El overlay se crea via JS en ReadingMask.jsx */
+.reading-mask-top,
+.reading-mask-bottom {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.72);
+  pointer-events: none;
+  z-index: 99998;
+  transition: top 0.05s linear, height 0.05s linear;
+}
+.reading-mask-top    { top: 0; }
+.reading-mask-bottom { bottom: 0; }
+
+
+/* ── Dashboard ───────────────────────────────────────────────────────────── */
 @keyframes fadeSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
