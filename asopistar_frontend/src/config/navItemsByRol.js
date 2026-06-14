@@ -150,7 +150,7 @@ const RUTAS_POR_ROL = {
     '/procesamiento', '/almacenamiento', '/reportes', '/configuracion',
   ],
   ROLE_BIOLOGO: [
-    '/dashboard', '/reportes', '/configuracion',
+    '/dashboard', '/produccion', '/reportes', '/configuracion',
   ],
   ROLE_GERENTE_COMERCIAL: [
     '/dashboard', '/logistica', '/clientes', '/puntos-venta',
