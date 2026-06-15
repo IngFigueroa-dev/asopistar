@@ -179,7 +179,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/ventas-insumo/**")
                     .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS)
                 .requestMatchers(HttpMethod.PATCH, "/ventas-insumo/**")
-                    .hasAnyAuthority(ADMIN, CONTADORA)
+                    .hasAnyAuthority(ADMIN, CONTADORA, VENDEDOR_INSUMOS)
                 .requestMatchers(HttpMethod.GET, "/movimientos-insumo/**")
                     .hasAnyAuthority(ADMIN, VENDEDOR_INSUMOS, CONTADORA)
                 .requestMatchers(HttpMethod.POST, "/movimientos-insumo/**")

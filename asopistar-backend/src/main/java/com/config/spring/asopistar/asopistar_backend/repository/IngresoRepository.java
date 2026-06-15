@@ -23,22 +23,22 @@ public interface IngresoRepository extends JpaRepository<Ingreso, Integer> {
      * Filtro flexible usado por IngresoServiceImpl.filtrar().
      * Todos los parámetros son opcionales (null = sin filtro).
      */
-    @Query("""
-        SELECT i FROM Ingreso i
-        WHERE (:estado IS NULL OR i.estadoPago = :estado)
-          AND (:tipo IS NULL OR i.tipoIngreso = :tipo)
-          AND (:idCliente IS NULL OR i.cliente.idCliente = :idCliente)
-          AND (:desde IS NULL OR i.fecha >= :desde)
-          AND (:hasta IS NULL OR i.fecha <= :hasta)
+    @Query(value = """
+        SELECT * FROM negocio.ingreso i
+        WHERE (:estado IS NULL OR i.estado_pago = :estado)
+        AND (:tipo IS NULL OR i.tipo_ingreso = :tipo)
+        AND (:idCliente IS NULL OR i.id_cliente = :idCliente)
+        AND (CAST(:desde AS timestamp) IS NULL OR i.fecha >= CAST(:desde AS timestamp))
+        AND (CAST(:hasta AS timestamp) IS NULL OR i.fecha <= CAST(:hasta AS timestamp))
         ORDER BY i.fecha DESC
-        """)
+        """, nativeQuery = true)
     List<Ingreso> filtrar(
             @Param("estado")    String estado,
             @Param("tipo")      String tipo,
             @Param("idCliente") Integer idCliente,
             @Param("desde")     LocalDateTime desde,
             @Param("hasta")     LocalDateTime hasta
-    );
+    );  
 
     // ── Estadísticas usadas por IngresoServiceImpl.estadisticas() ─────────────
 
