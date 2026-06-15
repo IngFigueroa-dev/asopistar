@@ -608,74 +608,123 @@ function TabMovimientos({ movimientos, busqueda, setBusqueda, onNuevoMovimiento,
 
 // ── TAB: REPORTES ─────────────────────────────────────────────
 function TabReportes({ insumos, ventas, movimientos }) {
-  const totalStock      = insumos.filter(i => i.estado === 'ACTIVO').length
-  const bajoStockCount  = insumos.filter(i => i.bajoStock && i.estado === 'ACTIVO').length
+  const activos         = insumos.filter(i => i.estado === 'ACTIVO')
+  const bajoStockList   = activos.filter(i => i.bajoStock)
   const totalVentas     = ventas.reduce((s, v) => s + Number(v.total), 0)
-  const ventasPendientes= ventas.filter(v => v.estadoPagado !== 'PAGADO').length
+  const ventasPendientes = ventas.filter(v => v.estadoPagado !== 'PAGADO').length
   const entradas        = movimientos.filter(m => m.tipoMovimiento === 'ENTRADA').length
   const salidas         = movimientos.filter(m => m.tipoMovimiento === 'SALIDA').length
 
   const cards = [
-    { label: 'Insumos activos',       valor: totalStock,       color: 'bg-teal-50 text-teal-700',    icono: Package },
-    { label: 'Bajo stock',            valor: bajoStockCount,   color: 'bg-amber-50 text-amber-700',  icono: AlertTriangle },
-    { label: 'Total ventas (COP)',    valor: `$${totalVentas.toLocaleString('es-CO')}`, color: 'bg-blue-50 text-blue-700', icono: ShoppingCart },
-    { label: 'Ventas pendientes',     valor: ventasPendientes, color: 'bg-red-50 text-red-700',      icono: XCircle },
-    { label: 'Entradas de inventario',valor: entradas,         color: 'bg-green-50 text-green-700',  icono: ArrowDown },
-    { label: 'Salidas de inventario', valor: salidas,          color: 'bg-purple-50 text-purple-700',icono: ArrowUp },
+    { label: 'Insumos activos',        valor: activos.length,       sub: `${insumos.length} totales`,        color: 'border-teal-200 bg-teal-50',   texto: 'text-teal-700',   icono: Package,       alerta: false },
+    { label: 'Bajo stock mínimo',      valor: bajoStockList.length, sub: bajoStockList.length > 0 ? '⚠ Requieren reabastecimiento' : '✓ Todo en orden', color: bajoStockList.length > 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50', texto: bajoStockList.length > 0 ? 'text-red-700' : 'text-green-700', icono: AlertTriangle, alerta: bajoStockList.length > 0 },
+    { label: 'Total ventas (COP)',      valor: `$${totalVentas.toLocaleString('es-CO')}`, sub: `${ventas.length} transacciones`, color: 'border-blue-200 bg-blue-50',   texto: 'text-blue-700',  icono: ShoppingCart,  alerta: false },
+    { label: 'Ventas pendientes pago', valor: ventasPendientes,     sub: ventasPendientes > 0 ? 'Pendiente de cobro' : 'Todo cobrado', color: ventasPendientes > 0 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50', texto: ventasPendientes > 0 ? 'text-amber-700' : 'text-green-700', icono: XCircle, alerta: ventasPendientes > 0 },
+    { label: 'Entradas al inventario', valor: entradas,             sub: 'Movimientos de entrada',           color: 'border-green-200 bg-green-50',  texto: 'text-green-700', icono: ArrowDown,     alerta: false },
+    { label: 'Salidas del inventario', valor: salidas,              sub: 'Movimientos de salida',            color: 'border-purple-200 bg-purple-50', texto: 'text-purple-700', icono: ArrowUp,      alerta: false },
   ]
 
   return (
     <div className="space-y-6">
+
+      {/* Alerta prominente si hay bajo stock */}
+      {bajoStockList.length > 0 && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
+          <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">
+              {bajoStockList.length} insumo{bajoStockList.length > 1 ? 's' : ''} bajo stock mínimo
+            </p>
+            <p className="text-xs text-red-600 mt-0.5">
+              {bajoStockList.map(i => i.nombre).join(' · ')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 6 tarjetas de indicadores */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {cards.map(({ label, valor, color, icono: Ic }) => (
-          <div key={label} className={`rounded-xl p-4 ${color}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Ic size={16} />
-              <span className="text-xs font-medium">{label}</span>
+        {cards.map(({ label, valor, sub, color, texto, icono: Ic, alerta }) => (
+          <div key={label} className={`rounded-xl p-4 border ${color}`}>
+            <div className={`flex items-center gap-2 mb-2 ${texto}`}>
+              <Ic size={15} />
+              <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
             </div>
-            <p className="text-2xl font-bold">{valor}</p>
+            <p className={`text-2xl font-bold ${texto}`}>{valor}</p>
+            <p className="text-xs text-gray-500 mt-1">{sub}</p>
           </div>
         ))}
       </div>
 
+      {/* Tabla de estado del inventario */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">Estado actual del inventario</h3>
+          <span className="text-xs text-gray-400">{activos.length} insumos activos</span>
         </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-gray-500 text-xs uppercase border-b border-gray-100">
+            <tr className="text-gray-500 text-xs uppercase border-b border-gray-100 bg-gray-50">
               <th className="text-left px-4 py-3">Insumo</th>
               <th className="text-left px-4 py-3">Tipo</th>
               <th className="text-right px-4 py-3">Stock actual</th>
-              <th className="text-right px-4 py-3">Stock mínimo</th>
-              <th className="text-left px-4 py-3">Alerta</th>
+              <th className="text-right px-4 py-3">Mínimo</th>
+              <th className="text-left px-4 py-3 w-32">Cobertura</th>
+              <th className="text-left px-4 py-3">Estado</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {insumos.filter(i => i.estado === 'ACTIVO').map(i => (
-              <tr key={i.idInsumo} className="hover:bg-gray-50">
-                <td className="px-4 py-2.5 font-medium text-gray-900">{i.nombre}</td>
-                <td className="px-4 py-2.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${TIPO_COLORS[i.tipo] || ''}`}>{i.tipo}</span>
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  {Number(i.stockActual).toLocaleString('es-CO')}
-                  <span className="text-gray-400 text-xs ml-1">{i.unidadMedida}</span>
-                </td>
-                <td className="px-4 py-2.5 text-right text-gray-500">
-                  {Number(i.stockMinimo).toLocaleString('es-CO')}
-                </td>
-                <td className="px-4 py-2.5">
-                  {i.bajoStock
-                    ? <span className="flex items-center gap-1 text-xs text-red-600"><AlertTriangle size={12} /> Bajo stock</span>
-                    : <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle size={12} /> OK</span>
-                  }
-                </td>
-              </tr>
-            ))}
+            {activos
+              .sort((a, b) => (a.bajoStock ? -1 : 1) - (b.bajoStock ? -1 : 1))
+              .map(i => {
+                const pct = i.stockMinimo > 0
+                  ? Math.min(100, Math.round((i.stockActual / i.stockMinimo) * 100))
+                  : 100
+                const critico = pct < 50
+                const advertencia = pct >= 50 && pct <= 100
+                return (
+                  <tr key={i.idInsumo} className={i.bajoStock ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{i.nombre}</p>
+                      {i.codigo && <p className="text-xs text-gray-400">{i.codigo}</p>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TIPO_COLORS[i.tipo] || ''}`}>{i.tipo}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-gray-800">
+                      {Number(i.stockActual).toLocaleString('es-CO')}
+                      <span className="text-gray-400 text-xs ml-1 font-normal">{i.unidadMedida}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-500">
+                      {Number(i.stockMinimo).toLocaleString('es-CO')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${critico ? 'bg-red-500' : advertencia ? 'bg-amber-400' : 'bg-green-500'}`}
+                            style={{ width: `${Math.min(pct, 100)}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs font-semibold w-8 text-right ${critico ? 'text-red-600' : advertencia ? 'text-amber-600' : 'text-green-600'}`}>
+                          {pct}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {i.bajoStock
+                        ? <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold"><AlertTriangle size={11} /> Bajo stock</span>
+                        : <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold"><CheckCircle size={11} /> OK</span>
+                      }
+                    </td>
+                  </tr>
+                )
+              })}
           </tbody>
         </table>
+        {activos.length === 0 && (
+          <div className="py-10 text-center text-gray-400 text-sm">Sin insumos activos registrados</div>
+        )}
       </div>
     </div>
   )

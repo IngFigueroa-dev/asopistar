@@ -19,7 +19,7 @@ function Layout({ children }) {
 
   const handleLogout = () => {
     localStorage.clear()
-    navigate('/login')
+    navigate('/')
   }
 
   return (

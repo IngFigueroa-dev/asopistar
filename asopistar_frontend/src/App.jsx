@@ -28,6 +28,7 @@ import Configuracion from './pages/configuracion/Configuracion'
 import Insumos       from './pages/insumos/Insumos'
 import Clientes      from './pages/clientes/Clientes'
 import PuntosDeVenta from './pages/puntosDeVenta/PuntosDeVenta'
+import LandingPage from "./pages/landing/LandingPage";
 
 // Admin
 import SolicitudesAcceso from './pages/admin/SolicitudesAcceso'
@@ -40,6 +41,7 @@ function App() {
       <Routes>
 
         {/* ── Rutas públicas (sin token) ──────────────────────── */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login"                element={<Login />} />
         <Route path="/registro"             element={<Registro />} />
         <Route path="/verificar-email"      element={<VerificacionEmail />} />
