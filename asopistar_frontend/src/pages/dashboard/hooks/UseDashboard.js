@@ -1,4 +1,5 @@
 // src/pages/dashboard/hooks/useDashboard.js
+// prueba para frontend
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../../services/api'
 
