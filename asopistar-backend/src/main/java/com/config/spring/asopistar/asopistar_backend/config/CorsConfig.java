@@ -16,7 +16,8 @@ public class CorsConfig {
 
         config.setAllowedOrigins(List.of(
             "http://localhost:5173",
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "https://asopistar-raqg.vercel.app"
         ));
 
         config.setAllowedMethods(List.of(
