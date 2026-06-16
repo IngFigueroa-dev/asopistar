@@ -6,19 +6,30 @@
   --color-sidebar: #1a2332;
 }
 
-/* ── Contraste — 3 niveles ───────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   ACCESIBILIDAD — CONTRASTE
+   
+   PROBLEMA: filter en body rompe position:fixed (el widget se desplaza).
+   SOLUCIÓN: Aplicar filter en el elemento html, y re-invertir SOLO el widget
+   para que quede visualmente normal y siga siendo fixed correctamente.
+══════════════════════════════════════════════════════════════════════════ */
 
-/* Nivel 1: Invertido */
-body.contraste-inv {
+/* Nivel 1: Invertido — filter va en html, NO en body */
+html:has(body.contraste-inv) {
   filter: invert(100%) hue-rotate(180deg);
 }
-body.contraste-inv img,
-body.contraste-inv video,
-body.contraste-inv svg {
+/* Imágenes y videos se re-invierten para verse normales */
+html:has(body.contraste-inv) img,
+html:has(body.contraste-inv) video,
+html:has(body.contraste-inv) svg:not(#a11y-widget svg) {
+  filter: invert(100%) hue-rotate(180deg);
+}
+/* El widget se re-invierte para verse normal (cancela el invert del html) */
+html:has(body.contraste-inv) #a11y-widget {
   filter: invert(100%) hue-rotate(180deg);
 }
 
-/* Nivel 2: Contraste oscuro — solo texto y bordes, sin tocar fondos */
+/* Nivel 2: Oscuro — sin filter, usa colores */
 body.contraste-oscuro {
   background-color: #0a0a0a !important;
   color: #ffffff !important;
@@ -47,16 +58,28 @@ body.contraste-oscuro header,
 body.contraste-oscuro main {
   background-color: #0f0f0f !important;
 }
-body.contraste-oscuro a { color: #4ade80 !important; }
+body.contraste-oscuro a    { color: #4ade80  !important; }
 body.contraste-oscuro button { color: #ffffff !important; }
 
-/* Nivel 3: Contraste de luz — solo texto oscuro, sin tocar fondos */
+/* Páginas de auth (fondo oscuro inline) en modo oscuro:
+   intensificar el oscurecimiento y hacer el texto más visible */
+body.contraste-oscuro [style*="background:#0F172A"],
+body.contraste-oscuro [style*="background: #0F172A"],
+body.contraste-oscuro [style*="background:'#0F172A'"] {
+  background-color: #000000 !important;
+}
+body.contraste-oscuro [style*="color:#F8FAFC"],
+body.contraste-oscuro [style*="color: #F8FAFC"] {
+  color: #ffffff !important;
+}
+
+/* Nivel 3: Luz — fondo blanco, texto negro, para CUALQUIER página */
 body.contraste-luz {
   background-color: #ffffff !important;
   color: #000000 !important;
 }
 body.contraste-luz p,
-body.contraste-luz span,
+body.contraste-luz span:not(#a11y-widget span),
 body.contraste-luz h1,
 body.contraste-luz h2,
 body.contraste-luz h3,
@@ -69,24 +92,141 @@ body.contraste-luz li {
   color: #000000 !important;
 }
 body.contraste-luz a,
-body.contraste-luz button {
+body.contraste-luz button:not(#a11y-widget button) {
   color: #0d6e68 !important;
   font-weight: 700 !important;
 }
 
-/* ── Texto — escala desde html root para que rem de Tailwind responda ────── */
-/* Tailwind usa rem, al cambiar font-size en :root todo escala proporcional  */
-body.texto-md  :root, :root body.texto-md  { font-size: 18px !important; }
-body.texto-lg  :root, :root body.texto-lg  { font-size: 22px !important; }
-body.texto-xl  :root, :root body.texto-xl  { font-size: 26px !important; }
-body.texto-2xl :root, :root body.texto-2xl { font-size: 30px !important; }
+/* ── Modo LUZ: aplica a CUALQUIER página incluyendo auth con inline styles ── */
 
+/* Todos los contenedores — sobreescribe inline background sin importar nivel */
+body.contraste-luz *:not(#a11y-widget):not(#a11y-widget *):not(#a11y-panel):not(#a11y-panel *) {
+  background-color: transparent !important;
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* El body y los contenedores raíz sí tienen fondo blanco */
+body.contraste-luz,
+body.contraste-luz > div,
+body.contraste-luz > div > div {
+  background-color: #f8fafc !important;
+}
+
+/* Paneles split de auth: fondo diferenciado para distinguir paneles */
+body.contraste-luz [style*="background:linear-gradient"],
+body.contraste-luz [style*="background: linear-gradient"] {
+  background: #e2e8f0 !important;
+  background-color: #e2e8f0 !important;
+}
+
+/* Inputs y selects — fondo blanco explícito */
+body.contraste-luz input,
+body.contraste-luz select,
+body.contraste-luz textarea {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #94a3b8 !important;
+}
+body.contraste-luz input::placeholder { color: #64748b !important; }
+
+/* Botón primario (degradado teal) — mantener legible */
+body.contraste-luz .auth-btn-primary,
+body.contraste-luz .reg-btn-primary,
+body.contraste-luz .pa-btn-primary,
+body.contraste-luz .ve-btn-primary {
+  background: linear-gradient(135deg, #0d9488, #0284c7) !important;
+  color: #ffffff !important;
+}
+
+/* Links y acentos teal — legibles en fondo claro */
+body.contraste-luz [style*="color:#14B8A6"],
+body.contraste-luz [style*="color:#06B6D4"] {
+  color: #0d6e68 !important;
+}
+
+/* Widget de accesibilidad — nunca afectado */
+body.contraste-luz #a11y-widget,
+body.contraste-luz #a11y-widget *,
+body.contraste-luz #a11y-panel,
+body.contraste-luz #a11y-panel * {
+  background-color: revert !important;
+  color: revert !important;
+  border-color: revert !important;
+}
+
+/* ── Modo OSCURO en páginas auth ── */
+body.contraste-oscuro [style*="background:#0F172A"],
+body.contraste-oscuro [style*="background: #0F172A"],
+body.contraste-oscuro [style*="background:rgba(15,23,42"],
+body.contraste-oscuro [style*="background: rgba(15,23,42"] {
+  background-color: #000000 !important;
+}
+body.contraste-oscuro [style*="background:rgba(17,24,39"],
+body.contraste-oscuro [style*="background: rgba(17,24,39"] {
+  background-color: #0a0a0a !important;
+}
+body.contraste-oscuro [style*="color:#F8FAFC"],
+body.contraste-oscuro [style*="color: #F8FAFC"],
+body.contraste-oscuro [style*="color:#94A3B8"],
+body.contraste-oscuro [style*="color:#64748B"] {
+  color: #ffffff !important;
+}
+body.contraste-oscuro input,
+body.contraste-oscuro select,
+body.contraste-oscuro textarea {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #374151 !important;
+}
+body.contraste-oscuro input::placeholder { color: #9ca3af !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TEXTO — dos estrategias combinadas:
+   1. html font-size: escala todo lo que usa rem (Tailwind, dashboard)
+   2. font-size directo en todos los elementos de texto: escala px fijos
+      (páginas de auth que usan inline styles con píxeles)
+══════════════════════════════════════════════════════════════════════════ */
+
+/* Estrategia 1: rem scaling para Tailwind y dashboard */
 html:has(body.texto-md)  { font-size: 18px !important; }
 html:has(body.texto-lg)  { font-size: 22px !important; }
 html:has(body.texto-xl)  { font-size: 26px !important; }
 html:has(body.texto-2xl) { font-size: 30px !important; }
 
-/* Cuando el texto crece, los contenedores deben ser flexibles */
+/* Estrategia 2: px directo para elementos con font-size inline (páginas auth)
+   Seleccionamos todos los elementos portadores de texto */
+body.texto-md  p, body.texto-md  span, body.texto-md  h1, body.texto-md  h2,
+body.texto-md  h3, body.texto-md  h4, body.texto-md  h5, body.texto-md  h6,
+body.texto-md  li, body.texto-md  label, body.texto-md  button,
+body.texto-md  input, body.texto-md  a, body.texto-md  div,
+body.texto-md  td, body.texto-md  th { font-size: 18px !important; }
+
+body.texto-lg  p, body.texto-lg  span, body.texto-lg  h1, body.texto-lg  h2,
+body.texto-lg  h3, body.texto-lg  h4, body.texto-lg  h5, body.texto-lg  h6,
+body.texto-lg  li, body.texto-lg  label, body.texto-lg  button,
+body.texto-lg  input, body.texto-lg  a, body.texto-lg  div,
+body.texto-lg  td, body.texto-lg  th { font-size: 22px !important; }
+
+body.texto-xl  p, body.texto-xl  span, body.texto-xl  h1, body.texto-xl  h2,
+body.texto-xl  h3, body.texto-xl  h4, body.texto-xl  h5, body.texto-xl  h6,
+body.texto-xl  li, body.texto-xl  label, body.texto-xl  button,
+body.texto-xl  input, body.texto-xl  a, body.texto-xl  div,
+body.texto-xl  td, body.texto-xl  th { font-size: 26px !important; }
+
+body.texto-2xl p, body.texto-2xl span, body.texto-2xl h1, body.texto-2xl h2,
+body.texto-2xl h3, body.texto-2xl h4, body.texto-2xl h5, body.texto-2xl h6,
+body.texto-2xl li, body.texto-2xl label, body.texto-2xl button,
+body.texto-2xl input, body.texto-2xl a, body.texto-2xl div,
+body.texto-2xl td, body.texto-2xl th { font-size: 30px !important; }
+
+/* Excluir el widget de accesibilidad del escalado de texto para que no se deforme */
+body.texto-md  #a11y-widget *,
+body.texto-lg  #a11y-widget *,
+body.texto-xl  #a11y-widget *,
+body.texto-2xl #a11y-widget * { font-size: revert !important; }
+
+/* Flexibilidad de contenedores cuando el texto crece */
 html:has(body.texto-md) *,
 html:has(body.texto-lg) *,
 html:has(body.texto-xl) *,
@@ -96,14 +236,12 @@ html:has(body.texto-2xl) * {
   overflow-wrap: break-word !important;
   word-break: break-word !important;
 }
-/* Contenedores con altura fija de Tailwind — permitirles crecer */
 html:has(body.texto-lg) [class*="h-"],
 html:has(body.texto-xl) [class*="h-"],
 html:has(body.texto-2xl) [class*="h-"] {
   height: auto !important;
   min-height: unset !important;
 }
-/* Navlinks del sidebar y botones deben envolver texto */
 html:has(body.texto-lg) nav a,
 html:has(body.texto-xl) nav a,
 html:has(body.texto-2xl) nav a,
@@ -115,7 +253,6 @@ html:has(body.texto-2xl) button {
   padding-top: 0.4em !important;
   padding-bottom: 0.4em !important;
 }
-/* Tablas — celdas deben adaptarse */
 html:has(body.texto-lg) td,
 html:has(body.texto-xl) td,
 html:has(body.texto-2xl) td {
@@ -123,14 +260,17 @@ html:has(body.texto-2xl) td {
   min-width: 80px;
 }
 
-/* ── Cursor grande — Nivel 1 ─────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   CURSOR GRANDE
+══════════════════════════════════════════════════════════════════════════ */
 body.cursor-grande,
 body.cursor-grande * {
   cursor: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDQ4IDQ4Ij4KICA8cGF0aCBkPSJNOCA0IEw4IDM4IEwxOCAyOCBMMjYgNDQgTDMwIDQyIEwyMiAyNiBMMzYgMjYgWiIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzFhMjMzMiIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+') 8 4, default !important;
 }
 
-/* ── Máscara de lectura — Nivel 2 (ventana iluminada) ───────────────────── */
-/* El overlay se crea via JS en ReadingMask.jsx */
+/* ══════════════════════════════════════════════════════════════════════════
+   MÁSCARA DE LECTURA
+══════════════════════════════════════════════════════════════════════════ */
 .reading-mask-top,
 .reading-mask-bottom {
   position: fixed;
@@ -144,6 +284,17 @@ body.cursor-grande * {
 .reading-mask-top    { top: 0; }
 .reading-mask-bottom { bottom: 0; }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   WIDGET DE ACCESIBILIDAD — siempre visible, nunca afectado por filtros
+   position: fixed funciona correctamente porque el filter está en html,
+   NO en body (filter en body rompería fixed).
+══════════════════════════════════════════════════════════════════════════ */
+#a11y-widget {
+  position: fixed !important;
+  bottom: 24px !important;
+  left: 16px !important;
+  z-index: 9999 !important;
+}
 
 /* ── Dashboard ───────────────────────────────────────────────────────────── */
 @keyframes fadeSlideIn {
