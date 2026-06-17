@@ -1,7 +1,8 @@
 // src/pages/admin/SolicitudesAcceso.jsx
 import { useState, useEffect } from 'react'
 import { CheckCircle, XCircle, Eye, RefreshCw, Clock,
-         Filter, Send, ShieldCheck, AlertTriangle } from 'lucide-react'
+         Filter, Send, ShieldCheck, AlertTriangle, X, User,
+         Mail, Phone, MapPin, Calendar, Briefcase, FileText } from 'lucide-react'
 import api from '../../services/api'
 
 const ROLES_DISPONIBLES = [
@@ -17,13 +18,13 @@ const ROLES_DISPONIBLES = [
 ]
 
 const ESTADO_BADGE = {
-  PENDIENTE_VERIFICACION: { label: 'Pendiente verificación', cls: 'bg-yellow-100 text-yellow-700' },
-  ERROR_ENVIO_CORREO:     { label: 'Error envío correo',     cls: 'bg-red-100 text-red-700' },
-  PENDIENTE_APROBACION:   { label: 'Pendiente aprobación',   cls: 'bg-blue-100 text-blue-700' },
-  ACTIVO:                 { label: 'Aprobado',               cls: 'bg-green-100 text-green-700' },
-  RECHAZADO:              { label: 'Rechazado',              cls: 'bg-red-100 text-red-600' },
-  SUSPENDIDO:             { label: 'Suspendido',             cls: 'bg-orange-100 text-orange-700' },
-  INACTIVO:               { label: 'Inactivo',               cls: 'bg-gray-100 text-gray-600' },
+  PENDIENTE_VERIFICACION: { label: 'Pendiente verificación', style: { background: '#FEF3C7', color: '#92400E' } },
+  ERROR_ENVIO_CORREO:     { label: 'Error envío correo',     style: { background: '#FEE2E2', color: '#991B1B' } },
+  PENDIENTE_APROBACION:   { label: 'Pendiente aprobación',   style: { background: '#DBEAFE', color: '#1E40AF' } },
+  ACTIVO:                 { label: 'Aprobado',               style: { background: '#D1FAE5', color: '#065F46' } },
+  RECHAZADO:              { label: 'Rechazado',              style: { background: '#FEE2E2', color: '#991B1B' } },
+  SUSPENDIDO:             { label: 'Suspendido',             style: { background: '#FFEDD5', color: '#9A3412' } },
+  INACTIVO:               { label: 'Inactivo',               style: { background: '#F1F5F9', color: '#64748B' } },
 }
 
 const FILTROS = [
@@ -34,6 +35,33 @@ const FILTROS = [
   { valor: 'RECHAZADO',              label: 'Rechazado' },
   { valor: 'TODOS',                  label: 'Todos' },
 ]
+
+// ── Tokens por tipo de modal/acción ──────────────────────────────────────────
+const ACCION_TOKEN = {
+  detalle:                 { grad: 'linear-gradient(135deg, #3B82F6, #6366F1)', bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE', solid: '#3B82F6' },
+  aprobar:                 { grad: 'linear-gradient(135deg, #10B981, #059669)', bg: '#F0FDF4', color: '#065F46', border: '#A7F3D0', solid: '#10B981' },
+  rechazar:                { grad: 'linear-gradient(135deg, #EF4444, #DC2626)', bg: '#FEF2F2', color: '#991B1B', border: '#FECACA', solid: '#EF4444' },
+  reenviar:                { grad: 'linear-gradient(135deg, #14B8A6, #06B6D4)', bg: '#F0FDFA', color: '#0F766E', border: '#CCFBF1', solid: '#14B8A6' },
+  'aprobar-manual':        { grad: 'linear-gradient(135deg, #8B5CF6, #A855F7)', bg: '#F5F3FF', color: '#6D28D9', border: '#DDD6FE', solid: '#8B5CF6' },
+  'confirm-aprobar-manual':{ grad: 'linear-gradient(135deg, #EF4444, #DC2626)', bg: '#FEF2F2', color: '#991B1B', border: '#FECACA', solid: '#EF4444' },
+}
+
+const GLOBAL_STYLES = `
+@keyframes sol-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sol-modal-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes sol-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+`
+
+const getIniciales = (n1 = '', a1 = '') => `${n1[0] || ''}${a1[0] || ''}`.toUpperCase()
 
 function SolicitudesAcceso() {
   const [solicitudes, setSolicitudes]         = useState([])
@@ -178,192 +206,166 @@ function SolicitudesAcceso() {
     return puede
   }
 
+  const mostrarColumnaReenvios =
+    filtroEstado === 'PENDIENTE_VERIFICACION' ||
+    filtroEstado === 'ERROR_ENVIO_CORREO' ||
+    filtroEstado === 'TODOS'
+
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Solicitudes de Acceso</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Aprueba o rechaza las solicitudes de registro al sistema.
-          </p>
+    <div style={{ background: '#F8FAFC', minHeight: '100vh', padding: '24px' }}>
+      <style>{GLOBAL_STYLES}</style>
+
+      {/* ── Hero Header ─────────────────────────────────────────── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #F0FDFA, #F8FAFC, #EFF6FF)',
+        border: '1px solid #E2E8F0', borderRadius: 16,
+        padding: '24px 28px', marginBottom: 24,
+        position: 'relative', overflow: 'hidden',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 16
+      }}>
+        <div style={{ position: 'absolute', top: -20, right: 80, width: 100, height: 100, borderRadius: '50%', background: 'rgba(20,184,166,0.07)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: 10, right: 30, width: 60, height: 60, borderRadius: '50%', background: 'rgba(6,182,212,0.06)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -15, right: 140, width: 80, height: 80, borderRadius: '50%', background: 'rgba(20,184,166,0.05)', pointerEvents: 'none' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+            background: 'linear-gradient(135deg, #14B8A6, #06B6D4)',
+            boxShadow: '0 4px 14px rgba(20,184,166,0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <ShieldCheck size={24} color="#fff" aria-hidden />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+              Solicitudes de Acceso
+            </h1>
+            <p style={{ fontSize: 13, color: '#64748B', margin: '2px 0 0' }}>
+              Aprueba o rechaza las solicitudes de registro al sistema
+            </p>
+          </div>
         </div>
-        <button onClick={cargar} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm">
-          <RefreshCw size={16} /> Actualizar
+
+        <button
+          onClick={cargar}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: '#fff', border: '1.5px solid #E2E8F0', color: '#64748B',
+            borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#14B8A6'; e.currentTarget.style.color = '#14B8A6' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B' }}
+        >
+          <RefreshCw size={15} aria-hidden /> Actualizar
         </button>
       </div>
 
-      {/* Feedback global */}
+      {/* Feedback global de éxito */}
       {exito && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mb-4">
-          {exito}
+        <div style={{
+          background: '#F0FDF4', border: '1px solid #A7F3D0', borderRadius: 14,
+          padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10
+        }}>
+          <CheckCircle size={17} color="#10B981" aria-hidden />
+          <span style={{ fontSize: 13, color: '#065F46', fontWeight: 600 }}>{exito}</span>
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <Filter size={16} className="text-gray-400" />
-        {FILTROS.map(f => (
-          <button
-            key={f.valor}
-            onClick={() => setFiltroEstado(f.valor)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              filtroEstado === f.valor
-                ? 'bg-teal-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* ── Filtros tipo píldora ─────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap'
+      }}>
+        <Filter size={15} color="#94A3B8" aria-hidden />
+        {FILTROS.map(f => {
+          const activo = filtroEstado === f.valor
+          return (
+            <button
+              key={f.valor}
+              onClick={() => setFiltroEstado(f.valor)}
+              style={{
+                padding: '8px 16px', borderRadius: 99, fontSize: 12, fontWeight: 700,
+                border: 'none', cursor: 'pointer', transition: 'all 0.2s ease',
+                background: activo ? 'linear-gradient(135deg, #14B8A6, #06B6D4)' : '#F1F5F9',
+                color: activo ? '#fff' : '#64748B',
+                boxShadow: activo ? '0 4px 12px rgba(20,184,166,0.3)' : 'none'
+              }}
+              onMouseEnter={e => { if (!activo) e.currentTarget.style.background = '#E2E8F0' }}
+              onMouseLeave={e => { if (!activo) e.currentTarget.style.background = '#F1F5F9' }}
+            >
+              {f.label}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Tabla */}
+      {/* Error de carga */}
+      {error && !modalTipo && (
+        <div style={{
+          background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 14,
+          padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20
+        }}>
+          <AlertTriangle size={17} color="#EF4444" aria-hidden />
+          <span style={{ fontSize: 13, color: '#991B1B' }}>{error}</span>
+        </div>
+      )}
+
+      {/* ── Contenido ───────────────────────────────────────────── */}
       {loading ? (
-        <div className="flex items-center justify-center h-40 text-gray-400">Cargando...</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} style={{ background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ height: 3, background: '#F1F5F9', animation: 'sol-pulse 1.4s ease infinite' }} />
+              <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F1F5F9', animation: 'sol-pulse 1.4s ease infinite', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ height: 12, background: '#F1F5F9', borderRadius: 6, marginBottom: 6, animation: 'sol-pulse 1.4s ease infinite' }} />
+                    <div style={{ height: 10, width: '60%', background: '#F1F5F9', borderRadius: 6, animation: 'sol-pulse 1.4s ease infinite', animationDelay: '0.1s' }} />
+                  </div>
+                </div>
+                {[0,1,2].map(j => (
+                  <div key={j} style={{ height: 10, background: '#F1F5F9', borderRadius: 6, marginBottom: 8, animation: 'sol-pulse 1.4s ease infinite', animationDelay: `${0.1*j}s` }} />
+                ))}
+              </div>
+              <div style={{ height: 44, background: '#FAFBFC', borderTop: '1px solid #F1F5F9', animation: 'sol-pulse 1.4s ease infinite' }} />
+            </div>
+          ))}
+        </div>
       ) : solicitudes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-          <Clock size={36} className="mb-2 opacity-30" />
-          <p>No hay solicitudes en este estado.</p>
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '60px 20px', textAlign: 'center'
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 16, marginBottom: 16,
+            background: 'linear-gradient(135deg, #CCFBF1, #A5F3FC)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <Clock size={28} color="#14B8A6" aria-hidden />
+          </div>
+          <p style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: 0 }}>
+            No hay solicitudes en este estado
+          </p>
+          <p style={{ fontSize: 13, color: '#64748B', marginTop: 6 }}>
+            Cambia el filtro para ver otras solicitudes
+          </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Nombre</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Documento</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Correo</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Cargo solicitado</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Fecha</th>
-                  {/* Columnas nuevas — solo visibles en filtros relevantes */}
-                  {(filtroEstado === 'PENDIENTE_VERIFICACION' ||
-                    filtroEstado === 'ERROR_ENVIO_CORREO' ||
-                    filtroEstado === 'TODOS') && (
-                    <>
-                      <th className="text-left px-5 py-3 font-semibold text-gray-600">Último correo</th>
-                      <th className="text-left px-5 py-3 font-semibold text-gray-600 text-center">Reenvíos</th>
-                    </>
-                  )}
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Estado</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {solicitudes.map(u => {
-                  const badge   = ESTADO_BADGE[u.estado] || { label: u.estado, cls: 'bg-gray-100 text-gray-600' }
-                  const acciones = accionesParaEstado(u)
-                  const mostrarColumnaReenvios =
-                    filtroEstado === 'PENDIENTE_VERIFICACION' ||
-                    filtroEstado === 'ERROR_ENVIO_CORREO' ||
-                    filtroEstado === 'TODOS'
-
-                  return (
-                    <tr key={u.idUsuario} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="px-5 py-3 font-medium text-gray-800">
-                        {u.nombre1} {u.apellido1}
-                      </td>
-                      <td className="px-5 py-3 text-gray-600">{u.documento || '—'}</td>
-                      <td className="px-5 py-3 text-gray-600">{u.email}</td>
-                      <td className="px-5 py-3 text-gray-600">{u.cargoSolicitado || '—'}</td>
-                      <td className="px-5 py-3 text-gray-500">{formatFecha(u.fechaCreacion)}</td>
-
-                      {/* Columnas de reenvío */}
-                      {mostrarColumnaReenvios && (
-                        <>
-                          <td className="px-5 py-3 text-gray-500 text-xs">
-                            {formatFechaHora(u.ultimoReenvio)}
-                          </td>
-                          <td className="px-5 py-3 text-center">
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${
-                              (u.cantidadReenvios || 0) > 2
-                                ? 'bg-orange-100 text-orange-700'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {u.cantidadReenvios || 0}
-                            </span>
-                          </td>
-                        </>
-                      )}
-
-                      <td className="px-5 py-3">
-                        <div className="flex flex-col gap-1">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${badge.cls}`}>
-                            {badge.label}
-                          </span>
-                          {/* Indicador de error SMTP */}
-                          {u.estado === 'ERROR_ENVIO_CORREO' && (
-                            <span className="flex items-center gap-1 text-xs text-red-500">
-                              <AlertTriangle size={10} />
-                              Error SMTP
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-1">
-                          {/* Ver detalle — siempre disponible */}
-                          <button
-                            onClick={() => abrirModal(u, 'detalle')}
-                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Ver detalles"
-                          >
-                            <Eye size={16} />
-                          </button>
-
-                          {/* Aprobar normal */}
-                          {acciones.aprobarNormal && (
-                            <button
-                              onClick={() => abrirModal(u, 'aprobar')}
-                              className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                              title="Aprobar"
-                            >
-                              <CheckCircle size={16} />
-                            </button>
-                          )}
-
-                          {/* Rechazar */}
-                          {acciones.rechazar && (
-                            <button
-                              onClick={() => abrirModal(u, 'rechazar')}
-                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Rechazar"
-                            >
-                              <XCircle size={16} />
-                            </button>
-                          )}
-
-                          {/* Reenviar correo */}
-                          {acciones.reenviarCorreo && (
-                            <button
-                              onClick={() => abrirModal(u, 'reenviar')}
-                              className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                              title="Reenviar correo de verificación"
-                            >
-                              <Send size={16} />
-                            </button>
-                          )}
-
-                          {/* Aprobar manualmente */}
-                          {acciones.aprobarManual && (
-                            <button
-                              onClick={() => abrirModal(u, 'aprobar-manual')}
-                              className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                              title="Aprobar manualmente (sin verificación de correo)"
-                            >
-                              <ShieldCheck size={16} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          {solicitudes.map((u, idx) => (
+            <SolicitudCard
+              key={u.idUsuario}
+              usuario={u}
+              idx={idx}
+              acciones={accionesParaEstado(u)}
+              mostrarReenvios={mostrarColumnaReenvios}
+              formatFecha={formatFecha}
+              formatFechaHora={formatFechaHora}
+              onAbrirModal={abrirModal}
+            />
+          ))}
         </div>
       )}
 
@@ -371,56 +373,79 @@ function SolicitudesAcceso() {
            MODALES
          ════════════════════════════════════════════════════════ */}
       {modalTipo && detalle && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
-
+        <ModalOverlay onClose={cerrarModal}>
+          <div style={{
+            background: '#fff', borderRadius: 20, width: '100%', maxWidth: 460,
+            maxHeight: '92vh', overflowY: 'auto',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+            animation: 'sol-modal-in 0.2s ease both'
+          }}>
             {/* Cabecera del modal */}
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-800">
-                {modalTipo === 'aprobar'              && '✅ Aprobar solicitud'}
-                {modalTipo === 'rechazar'             && '❌ Rechazar solicitud'}
-                {modalTipo === 'detalle'              && '👤 Detalle del solicitante'}
-                {modalTipo === 'reenviar'             && '📧 Reenviar correo de verificación'}
-                {modalTipo === 'aprobar-manual'       && '🛡️ Aprobar manualmente'}
-                {modalTipo === 'confirm-aprobar-manual' && '⚠️ Confirmar aprobación manual'}
-              </h2>
+            <div style={{
+              padding: '20px 24px', borderBottom: '1px solid #F1F5F9',
+              borderRadius: '20px 20px 0 0',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  background: ACCION_TOKEN[modalTipo].grad,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  {modalTipo === 'aprobar' && <CheckCircle size={18} color="#fff" aria-hidden />}
+                  {modalTipo === 'rechazar' && <XCircle size={18} color="#fff" aria-hidden />}
+                  {modalTipo === 'detalle' && <User size={18} color="#fff" aria-hidden />}
+                  {modalTipo === 'reenviar' && <Send size={18} color="#fff" aria-hidden />}
+                  {modalTipo === 'aprobar-manual' && <ShieldCheck size={18} color="#fff" aria-hidden />}
+                  {modalTipo === 'confirm-aprobar-manual' && <AlertTriangle size={18} color="#fff" aria-hidden />}
+                </div>
+                <h2 style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  {modalTipo === 'aprobar'              && 'Aprobar solicitud'}
+                  {modalTipo === 'rechazar'             && 'Rechazar solicitud'}
+                  {modalTipo === 'detalle'              && 'Detalle del solicitante'}
+                  {modalTipo === 'reenviar'             && 'Reenviar correo de verificación'}
+                  {modalTipo === 'aprobar-manual'       && 'Aprobar manualmente'}
+                  {modalTipo === 'confirm-aprobar-manual' && 'Confirmar aprobación manual'}
+                </h2>
+              </div>
+              <button
+                onClick={cerrarModal}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8',
+                  display: 'flex', padding: 6, borderRadius: 8, transition: 'all 0.2s ease', flexShrink: 0
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.color = '#EF4444' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#94A3B8' }}
+                aria-label="Cerrar"
+              >
+                <X size={18} aria-hidden />
+              </button>
             </div>
 
-            <div className="p-6 flex flex-col gap-4">
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* Info del usuario — presente en todos los modales */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-                <p><span className="text-gray-500">Nombre:</span> <strong>
-                  {detalle.nombre1} {detalle.nombre2 || ''} {detalle.apellido1} {detalle.apellido2 || ''}
-                </strong></p>
-                <p><span className="text-gray-500">Documento:</span> {detalle.documento || '—'}</p>
-                <p><span className="text-gray-500">Correo:</span> {detalle.email}</p>
-                <p><span className="text-gray-500">Teléfono:</span> {detalle.telefono || '—'}</p>
-                <p><span className="text-gray-500">Cargo solicitado:</span> <strong>{detalle.cargoSolicitado || '—'}</strong></p>
-                {detalle.direccion && <p><span className="text-gray-500">Dirección:</span> {detalle.direccion}</p>}
-                {detalle.fechaNacimiento && (
-                  <p><span className="text-gray-500">F. Nacimiento:</span> {formatFecha(detalle.fechaNacimiento)}</p>
-                )}
+              <div style={{ background: '#FAFBFC', border: '1px solid #F1F5F9', borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+                <InfoLinea label="Nombre" valor={`${detalle.nombre1} ${detalle.nombre2 || ''} ${detalle.apellido1} ${detalle.apellido2 || ''}`} fuerte />
+                <InfoLinea label="Documento" valor={detalle.documento || '—'} />
+                <InfoLinea label="Correo" valor={detalle.email} />
+                <InfoLinea label="Teléfono" valor={detalle.telefono || '—'} />
+                <InfoLinea label="Cargo solicitado" valor={detalle.cargoSolicitado || '—'} fuerte />
+                {detalle.direccion && <InfoLinea label="Dirección" valor={detalle.direccion} />}
+                {detalle.fechaNacimiento && <InfoLinea label="F. Nacimiento" valor={formatFecha(detalle.fechaNacimiento)} />}
 
                 {/* Datos de reenvío — solo en modales relevantes */}
                 {(modalTipo === 'reenviar' || modalTipo === 'detalle' || modalTipo === 'aprobar-manual') && (
                   <>
-                    <hr className="border-gray-200" />
-                    <p>
-                      <span className="text-gray-500">Reenvíos anteriores:</span>{' '}
-                      <strong>{detalle.cantidadReenvios || 0}</strong>
-                    </p>
-                    <p>
-                      <span className="text-gray-500">Último correo enviado:</span>{' '}
-                      {formatFechaHora(detalle.ultimoReenvio)}
-                    </p>
+                    <div style={{ borderTop: '1px solid #E2E8F0', margin: '4px 0' }} />
+                    <InfoLinea label="Reenvíos anteriores" valor={String(detalle.cantidadReenvios || 0)} fuerte />
+                    <InfoLinea label="Último correo enviado" valor={formatFechaHora(detalle.ultimoReenvio)} />
                     {detalle.errorEnvioCorreo && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-2 mt-1">
-                        <p className="text-xs text-red-700 font-semibold mb-0.5">
-                          <AlertTriangle size={11} className="inline mr-1" />
-                          Error SMTP registrado:
+                      <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 9, padding: '8px 10px', marginTop: 4 }}>
+                        <p style={{ fontSize: 11, color: '#991B1B', fontWeight: 700, margin: '0 0 3px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <AlertTriangle size={11} aria-hidden /> Error SMTP registrado:
                         </p>
-                        <p className="text-xs text-red-600 break-all">{detalle.errorEnvioCorreo}</p>
+                        <p style={{ fontSize: 11, color: '#EF4444', margin: 0, wordBreak: 'break-all' }}>{detalle.errorEnvioCorreo}</p>
                       </div>
                     )}
                   </>
@@ -430,22 +455,20 @@ function SolicitudesAcceso() {
               {/* ── Modal: Aprobar normal ── */}
               {modalTipo === 'aprobar' && (
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">
-                    Rol a asignar <span className="text-red-500">*</span>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                    Rol a asignar *
                   </label>
-                  <select
+                  <SelectModal
                     value={rolSeleccionado}
-                    onChange={e => setRolSeleccionado(e.target.value)}
-                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
+                    onChange={setRolSeleccionado}
+                    focusColor={ACCION_TOKEN.aprobar.solid}
                   >
                     {ROLES_DISPONIBLES.map(r => (
-                      <option key={r.id ?? 'none'} value={r.id ?? ''} disabled={!r.id}>
-                        {r.nombre}
-                      </option>
+                      <option key={r.id ?? 'none'} value={r.id ?? ''} disabled={!r.id}>{r.nombre}</option>
                     ))}
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Cargo solicitado: <strong>{detalle.cargoSolicitado}</strong>
+                  </SelectModal>
+                  <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 6 }}>
+                    Cargo solicitado: <strong style={{ color: '#64748B' }}>{detalle.cargoSolicitado}</strong>
                   </p>
                 </div>
               )}
@@ -453,7 +476,7 @@ function SolicitudesAcceso() {
               {/* ── Modal: Rechazar ── */}
               {modalTipo === 'rechazar' && (
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                     Motivo del rechazo (opcional)
                   </label>
                   <textarea
@@ -461,9 +484,16 @@ function SolicitudesAcceso() {
                     onChange={e => setMotivoRechazo(e.target.value)}
                     rows={3}
                     placeholder="Ej: La información proporcionada no coincide con nuestros registros."
-                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-red-400 resize-none"
+                    style={{
+                      width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0',
+                      borderRadius: 9, background: '#FAFAFA', fontSize: 13, color: '#0F172A',
+                      outline: 'none', resize: 'none', boxSizing: 'border-box',
+                      fontFamily: 'inherit', transition: 'all 0.2s ease'
+                    }}
+                    onFocus={e => { e.target.style.borderColor = '#EF4444'; e.target.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.12)' }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none' }}
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 6 }}>
                     Este mensaje se enviará al usuario por correo.
                   </p>
                 </div>
@@ -471,37 +501,41 @@ function SolicitudesAcceso() {
 
               {/* ── Modal: Reenviar correo ── */}
               {modalTipo === 'reenviar' && (
-                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 text-sm text-teal-700">
-                  Se generará un nuevo token de verificación e invalidará el anterior.
-                  El correo se enviará a <strong>{detalle.email}</strong>.
+                <div style={{ background: '#F0FDFA', border: '1px solid #CCFBF1', borderRadius: 10, padding: '12px 14px' }}>
+                  <p style={{ fontSize: 13, color: '#0F766E', margin: 0 }}>
+                    Se generará un nuevo token de verificación e invalidará el anterior.
+                    El correo se enviará a <strong>{detalle.email}</strong>.
+                  </p>
                 </div>
               )}
 
               {/* ── Modal: Aprobar manualmente — paso 1 ── */}
               {modalTipo === 'aprobar-manual' && (
-                <div className="flex flex-col gap-3">
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                    <p className="font-semibold mb-1">⚠️ Esta acción omite la verificación de correo.</p>
-                    <p>Úsala solo cuando conozcas personalmente al solicitante y el correo no haya llegado por causas externas.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ background: '#FFFBEB', border: '1px solid #FED7AA', borderRadius: 10, padding: '12px 14px' }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: '#92400E', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <AlertTriangle size={13} aria-hidden /> Esta acción omite la verificación de correo.
+                    </p>
+                    <p style={{ fontSize: 12, color: '#92400E', margin: 0 }}>
+                      Úsala solo cuando conozcas personalmente al solicitante y el correo no haya llegado por causas externas.
+                    </p>
                   </div>
                   <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-1">
-                      Rol a asignar <span className="text-red-500">*</span>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                      Rol a asignar *
                     </label>
-                    <select
+                    <SelectModal
                       value={rolSeleccionado}
-                      onChange={e => setRolSeleccionado(e.target.value)}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500"
+                      onChange={setRolSeleccionado}
+                      focusColor={ACCION_TOKEN['aprobar-manual'].solid}
                     >
                       {ROLES_DISPONIBLES.map(r => (
-                        <option key={r.id ?? 'none'} value={r.id ?? ''} disabled={!r.id}>
-                          {r.nombre}
-                        </option>
+                        <option key={r.id ?? 'none'} value={r.id ?? ''} disabled={!r.id}>{r.nombre}</option>
                       ))}
-                    </select>
+                    </SelectModal>
                   </div>
                   <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-1">
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                       Justificación (se registra en auditoría)
                     </label>
                     <textarea
@@ -509,7 +543,14 @@ function SolicitudesAcceso() {
                       onChange={e => setObservacionManual(e.target.value)}
                       rows={2}
                       placeholder="Ej: Se verificó identidad en persona. Correo institucional bloqueado."
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500 resize-none"
+                      style={{
+                        width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0',
+                        borderRadius: 9, background: '#FAFAFA', fontSize: 13, color: '#0F172A',
+                        outline: 'none', resize: 'none', boxSizing: 'border-box',
+                        fontFamily: 'inherit', transition: 'all 0.2s ease'
+                      }}
+                      onFocus={e => { e.target.style.borderColor = '#8B5CF6'; e.target.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.12)' }}
+                      onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none' }}
                     />
                   </div>
                 </div>
@@ -517,28 +558,34 @@ function SolicitudesAcceso() {
 
               {/* ── Modal: Confirmar aprobación manual ── */}
               {modalTipo === 'confirm-aprobar-manual' && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800">
-                  <p className="font-bold mb-2">⚠️ ATENCIÓN</p>
-                  <p>
+                <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '14px 16px' }}>
+                  <p style={{ fontSize: 13, fontWeight: 800, color: '#991B1B', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <AlertTriangle size={14} aria-hidden /> ATENCIÓN
+                  </p>
+                  <p style={{ fontSize: 13, color: '#991B1B', margin: 0 }}>
                     Esta acción activará la cuenta de{' '}
                     <strong>{detalle.nombre1} {detalle.apellido1}</strong>{' '}
                     <strong>sin realizar la validación automática del correo electrónico</strong>.
                     ¿Desea continuar?
                   </p>
-                  <p className="mt-2 text-xs text-red-600">
+                  <p style={{ marginTop: 8, fontSize: 11, color: '#EF4444' }}>
                     Esta acción quedará registrada en el historial de auditoría.
                   </p>
                 </div>
               )}
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-                  ⚠️ {error}
+                <div style={{
+                  background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 9,
+                  padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8
+                }}>
+                  <AlertTriangle size={14} color="#EF4444" aria-hidden />
+                  <span style={{ fontSize: 12, color: '#991B1B' }}>{error}</span>
                 </div>
               )}
 
               {/* Botones de acción */}
-              <div className="flex gap-3 pt-1">
+              <div style={{ display: 'flex', gap: 10, paddingTop: 2 }}>
                 <button
                   onClick={() => {
                     if (modalTipo === 'confirm-aprobar-manual') {
@@ -547,7 +594,13 @@ function SolicitudesAcceso() {
                       cerrarModal()
                     }
                   }}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  style={{
+                    flex: 1, padding: '10px 0', border: '1.5px solid #E2E8F0', background: '#FAFAFA',
+                    color: '#64748B', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer', transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F9' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#FAFAFA' }}
                 >
                   {modalTipo === 'detalle'              ? 'Cerrar'
                     : modalTipo === 'confirm-aprobar-manual' ? '← Volver'
@@ -555,45 +608,248 @@ function SolicitudesAcceso() {
                 </button>
 
                 {modalTipo === 'aprobar' && (
-                  <button onClick={handleAprobar} disabled={procesando}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-70">
+                  <BotonAccion onClick={handleAprobar} disabled={procesando} token={ACCION_TOKEN.aprobar}>
                     {procesando ? 'Aprobando...' : 'Confirmar aprobación'}
-                  </button>
+                  </BotonAccion>
                 )}
 
                 {modalTipo === 'rechazar' && (
-                  <button onClick={handleRechazar} disabled={procesando}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-70">
+                  <BotonAccion onClick={handleRechazar} disabled={procesando} token={ACCION_TOKEN.rechazar}>
                     {procesando ? 'Rechazando...' : 'Confirmar rechazo'}
-                  </button>
+                  </BotonAccion>
                 )}
 
                 {modalTipo === 'reenviar' && (
-                  <button onClick={handleReenviarCorreo} disabled={procesando}
-                    className="flex-1 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-70">
+                  <BotonAccion onClick={handleReenviarCorreo} disabled={procesando} token={ACCION_TOKEN.reenviar}>
                     {procesando ? 'Enviando...' : 'Reenviar correo'}
-                  </button>
+                  </BotonAccion>
                 )}
 
                 {modalTipo === 'aprobar-manual' && (
-                  <button onClick={irAConfirmarManual}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors">
+                  <BotonAccion onClick={irAConfirmarManual} token={ACCION_TOKEN['aprobar-manual']}>
                     Continuar →
-                  </button>
+                  </BotonAccion>
                 )}
 
                 {modalTipo === 'confirm-aprobar-manual' && (
-                  <button onClick={handleAprobarManual} disabled={procesando}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-70">
+                  <BotonAccion onClick={handleAprobarManual} disabled={procesando} token={ACCION_TOKEN['confirm-aprobar-manual']}>
                     {procesando ? 'Activando...' : 'Sí, activar cuenta'}
-                  </button>
+                  </BotonAccion>
                 )}
               </div>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
+  )
+}
+
+// ── Card de solicitud ────────────────────────────────────────────────────────
+function SolicitudCard({ usuario: u, idx, acciones, mostrarReenvios, formatFecha, formatFechaHora, onAbrirModal }) {
+  const [hovered, setHovered] = useState(false)
+  const badge = ESTADO_BADGE[u.estado] || { label: u.estado, style: { background: '#F1F5F9', color: '#64748B' } }
+
+  const bordeTop = u.estado === 'ACTIVO' ? 'linear-gradient(90deg, #10B981, #059669)'
+    : u.estado === 'RECHAZADO' || u.estado === 'ERROR_ENVIO_CORREO' ? 'linear-gradient(90deg, #EF4444, #DC2626)'
+    : u.estado === 'PENDIENTE_APROBACION' ? 'linear-gradient(90deg, #3B82F6, #6366F1)'
+    : u.estado === 'PENDIENTE_VERIFICACION' ? 'linear-gradient(90deg, #F59E0B, #F97316)'
+    : 'linear-gradient(90deg, #94A3B8, #CBD5E1)'
+
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: `1px solid ${hovered ? 'rgba(20,184,166,0.3)' : '#F1F5F9'}`,
+        borderRadius: 14, overflow: 'hidden',
+        transition: 'all 0.2s ease',
+        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        boxShadow: hovered ? '0 4px 16px rgba(0,0,0,0.06)' : 'none',
+        animation: 'sol-fade 0.22s ease both',
+        animationDelay: `${idx * 0.04}s`
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div style={{ height: 3, background: bordeTop }} />
+
+      <div style={{ padding: '14px 16px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+            background: 'linear-gradient(135deg, #CCFBF1, #A5F3FC)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, fontWeight: 800, color: '#0F766E'
+          }}>
+            {getIniciales(u.nombre1, u.apellido1)}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', margin: 0, lineHeight: 1.3 }}>
+              {u.nombre1} {u.apellido1}
+            </p>
+            <p style={{ fontSize: 11, color: '#94A3B8', margin: '2px 0 0' }}>
+              {u.documento || '—'}
+            </p>
+          </div>
+        </div>
+
+        {/* Datos */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
+          <DatoCard icon={<Mail size={12} aria-hidden />} texto={u.email} />
+          <DatoCard icon={<Briefcase size={12} aria-hidden />} texto={u.cargoSolicitado || '—'} />
+          <DatoCard icon={<Calendar size={12} aria-hidden />} texto={formatFecha(u.fechaCreacion)} />
+          {mostrarReenvios && (
+            <DatoCard
+              icon={<Send size={12} aria-hidden />}
+              texto={`Último correo: ${formatFechaHora(u.ultimoReenvio)} · ${u.cantidadReenvios || 0} reenvío${u.cantidadReenvios === 1 ? '' : 's'}`}
+            />
+          )}
+        </div>
+
+        {/* Estado */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <ChipInline style={badge.style}>{badge.label}</ChipInline>
+          {u.estado === 'ERROR_ENVIO_CORREO' && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#EF4444', fontWeight: 600 }}>
+              <AlertTriangle size={10} aria-hidden /> Error SMTP
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Footer con acciones */}
+      <div style={{
+        background: '#FAFBFC', borderTop: '1px solid #F1F5F9',
+        padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4
+      }}>
+        <BtnIcono onClick={() => onAbrirModal(u, 'detalle')} title="Ver detalles" hoverColor="#3B82F6" hoverBg="#EFF6FF">
+          <Eye size={14} aria-hidden />
+        </BtnIcono>
+        {acciones.aprobarNormal && (
+          <BtnIcono onClick={() => onAbrirModal(u, 'aprobar')} title="Aprobar" hoverColor="#10B981" hoverBg="#F0FDF4">
+            <CheckCircle size={14} aria-hidden />
+          </BtnIcono>
+        )}
+        {acciones.rechazar && (
+          <BtnIcono onClick={() => onAbrirModal(u, 'rechazar')} title="Rechazar" hoverColor="#EF4444" hoverBg="#FEF2F2">
+            <XCircle size={14} aria-hidden />
+          </BtnIcono>
+        )}
+        {acciones.reenviarCorreo && (
+          <BtnIcono onClick={() => onAbrirModal(u, 'reenviar')} title="Reenviar correo de verificación" hoverColor="#14B8A6" hoverBg="#F0FDFA">
+            <Send size={14} aria-hidden />
+          </BtnIcono>
+        )}
+        {acciones.aprobarManual && (
+          <BtnIcono onClick={() => onAbrirModal(u, 'aprobar-manual')} title="Aprobar manualmente (sin verificación de correo)" hoverColor="#8B5CF6" hoverBg="#F5F3FF">
+            <ShieldCheck size={14} aria-hidden />
+          </BtnIcono>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Componentes auxiliares ────────────────────────────────────────────────────
+
+function ModalOverlay({ children, onClose }) {
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)'
+      }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function InfoLinea({ label, valor, fuerte }) {
+  return (
+    <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>
+      <span style={{ color: '#94A3B8' }}>{label}:</span>{' '}
+      <span style={{ color: '#334155', fontWeight: fuerte ? 700 : 400 }}>{valor}</span>
+    </p>
+  )
+}
+
+function SelectModal({ value, onChange, children, focusColor }) {
+  return (
+    <select
+      value={value} onChange={e => onChange(e.target.value)}
+      style={{
+        width: '100%', padding: '9px 12px', boxSizing: 'border-box',
+        border: '1.5px solid #E2E8F0', borderRadius: 9, background: '#FAFAFA',
+        fontSize: 13, color: '#0F172A', outline: 'none', cursor: 'pointer',
+        transition: 'all 0.2s ease'
+      }}
+      onFocus={e => { e.target.style.borderColor = focusColor; e.target.style.boxShadow = `0 0 0 3px ${focusColor}20` }}
+      onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none' }}
+    >
+      {children}
+    </select>
+  )
+}
+
+function DatoCard({ icon, texto }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ color: '#94A3B8', flexShrink: 0 }}>{icon}</span>
+      <span style={{ fontSize: 12, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{texto}</span>
+    </div>
+  )
+}
+
+function ChipInline({ children, style }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '3px 9px', borderRadius: 99,
+      fontSize: 10, fontWeight: 700, ...style
+    }}>
+      {children}
+    </span>
+  )
+}
+
+function BtnIcono({ children, onClick, title, hoverColor, hoverBg }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <button
+      onClick={onClick} title={title}
+      style={{
+        width: 30, height: 30, borderRadius: 8, border: 'none',
+        background: hov ? hoverBg : 'transparent',
+        color: hov ? hoverColor : '#94A3B8',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', transition: 'all 0.2s ease'
+      }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+    >
+      {children}
+    </button>
+  )
+}
+
+function BotonAccion({ children, onClick, disabled, token }) {
+  return (
+    <button
+      onClick={onClick} disabled={disabled}
+      style={{
+        flex: 1, padding: '10px 0', border: 'none', borderRadius: 10,
+        fontSize: 13, fontWeight: 700, color: '#fff',
+        background: token.grad, cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.7 : 1, transition: 'all 0.2s ease',
+        boxShadow: `0 4px 12px ${token.solid}40`
+      }}
+    >
+      {children}
+    </button>
   )
 }
 

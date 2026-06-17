@@ -2,14 +2,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   Truck, Package, MapPin, CheckCircle, Clock, ChevronRight,
-  Plus, X, Filter, Search, Snowflake, ArrowRight, Eye,
-  User, Phone, Building2, Calendar, FileText, AlertTriangle,
-  Navigation, Hash, Store, Ban
+  Plus, X, Search, Snowflake, ArrowRight, Eye,
+  User, Phone, Building2, Calendar, AlertTriangle,
+  Hash, Store, Ban, Navigation,
 } from 'lucide-react'
 import api from '../../services/api'
 
-// ── Constantes ────────────────────────────────────────────────────────────────
-
+// ── Constantes ─────────────────────────────────────────────────
 const DESTINOS = [
   'El Tarra (Sede)', 'El Tarra (Veredas)', 'Punto Físico El Tarra',
   'Punto Físico Cúcuta', 'Ocaña', 'Ábrego', 'Cúcuta', 'Bucaramanga',
@@ -20,82 +19,94 @@ const TIPOS_VEHICULO = [
 ]
 
 const ESTADO_CONFIG = {
-  PREPARADO:  { label: 'Preparado',  dot: 'bg-yellow-400', cls: 'bg-yellow-50 text-yellow-700 border-yellow-200', step: 0 },
-  EN_CAMINO:  { label: 'En camino',  dot: 'bg-blue-400',   cls: 'bg-blue-50 text-blue-700 border-blue-200',       step: 1 },
-  ENTREGADO:  { label: 'Entregado',  dot: 'bg-green-400',  cls: 'bg-green-50 text-green-700 border-green-200',    step: 2 },
-  CANCELADO:  { label: 'Cancelado',  dot: 'bg-red-400',    cls: 'bg-red-50 text-red-600 border-red-200',          step: -1 },
+  PREPARADO: { label: 'Preparado', step: 0, bg: '#FFFBEB', color: '#92400E', dot: '#F59E0B', border: '#FED7AA' },
+  EN_CAMINO: { label: 'En camino', step: 1, bg: '#EFF6FF', color: '#1E40AF', dot: '#3B82F6', border: '#BFDBFE' },
+  ENTREGADO: { label: 'Entregado', step: 2, bg: '#F0FDF4', color: '#065F46', dot: '#10B981', border: '#A7F3D0' },
+  CANCELADO: { label: 'Cancelado', step: -1, bg: '#FEF2F2', color: '#991B1B', dot: '#EF4444', border: '#FECACA' },
 }
 
 const SIGUIENTE_ESTADO = { PREPARADO: 'EN_CAMINO', EN_CAMINO: 'ENTREGADO' }
 const SIGUIENTE_LABEL  = { PREPARADO: 'Marcar en camino', EN_CAMINO: 'Marcar entregado' }
 
-// ── Componentes reutilizables ─────────────────────────────────────────────────
+const fmt     = (dt) => dt ? String(dt).replace('T', ' ').substring(0, 16) : '—'
+const fmtDate = (d)  => d  ? String(d).substring(0, 10) : '—'
 
-const Badge = ({ estado }) => {
+// ── Estilos base ───────────────────────────────────────────────
+const inputBase = {
+  width: '100%',
+  fontSize: 13,
+  border: '1.5px solid #E2E8F0',
+  borderRadius: 9,
+  padding: '9px 12px',
+  background: '#FAFAFA',
+  color: '#0F172A',
+  outline: 'none',
+  transition: 'all 0.2s ease',
+  boxSizing: 'border-box',
+}
+
+// ── Badge de estado ────────────────────────────────────────────
+function Badge({ estado }) {
   const cfg = ESTADO_CONFIG[estado] || ESTADO_CONFIG.PREPARADO
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${cfg.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      fontSize: 11, fontWeight: 700,
+      padding: '3px 10px', borderRadius: 999,
+      background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
       {cfg.label}
     </span>
   )
 }
 
-const StatCard = ({ icon: Icon, label, value, color, sub }) => (
-  <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-    <div className="flex items-center justify-between mb-3">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
-        <Icon size={16} className="text-white" />
-      </div>
-    </div>
-    <p className="text-3xl font-black text-gray-800">{value}</p>
-    {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
-  </div>
-)
-
-const fmt = (dt) => dt ? String(dt).replace('T', ' ').substring(0, 16) : '—'
-const fmtDate = (d) => d ? String(d).substring(0, 10) : '—'
-
-// ── LÍNEA DE TIEMPO DE SEGUIMIENTO ───────────────────────────────────────────
-
+// ── Línea de tiempo ────────────────────────────────────────────
 function LineaTiempo({ envio }) {
   const pasos = [
-    { key: 'PREPARADO', label: 'Preparado',  fecha: envio.fechaPreparacion, icon: Package   },
-    { key: 'EN_CAMINO', label: 'En camino',  fecha: envio.fechaSalida,      icon: Truck     },
-    { key: 'ENTREGADO', label: 'Entregado',  fecha: envio.fechaEntregaReal, icon: CheckCircle },
+    { key: 'PREPARADO', label: 'Preparado', fecha: envio.fechaPreparacion, icon: Package },
+    { key: 'EN_CAMINO', label: 'En camino', fecha: envio.fechaSalida,      icon: Truck },
+    { key: 'ENTREGADO', label: 'Entregado', fecha: envio.fechaEntregaReal, icon: CheckCircle },
   ]
   const stepActual = ESTADO_CONFIG[envio.estado]?.step ?? 0
 
   return (
-    <div className="flex items-center gap-0 w-full">
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
       {pasos.map((p, i) => {
-        const activo   = stepActual >= p.step || (envio.estado === p.key)
+        const activo   = stepActual >= p.step || envio.estado === p.key
         const esActual = envio.estado === p.key
         const Icon = p.icon
         return (
-          <div key={p.key} className="flex items-center flex-1">
-            <div className="flex flex-col items-center flex-1">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
-                activo
-                  ? esActual
-                    ? 'bg-teal-600 border-teal-600 shadow-md shadow-teal-200'
-                    : 'bg-teal-100 border-teal-400'
-                  : 'bg-gray-100 border-gray-200'
-              }`}>
-                <Icon size={15} className={activo ? (esActual ? 'text-white' : 'text-teal-600') : 'text-gray-400'} />
+          <div key={p.key} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: `2px solid ${activo ? (esActual ? '#14B8A6' : '#5EEAD4') : '#E2E8F0'}`,
+                background: esActual
+                  ? 'linear-gradient(135deg, #14B8A6, #06B6D4)'
+                  : activo ? '#CCFBF1' : '#F8FAFC',
+                boxShadow: esActual ? '0 3px 10px rgba(20,184,166,0.3)' : 'none',
+                transition: 'all 0.2s ease',
+              }}>
+                <Icon size={14} color={esActual ? '#fff' : activo ? '#0F766E' : '#CBD5E1'} />
               </div>
-              <p className={`text-xs font-semibold mt-1 ${activo ? 'text-teal-700' : 'text-gray-400'}`}>
+              <p style={{ fontSize: 11, fontWeight: 700, marginTop: 4, color: activo ? '#0F766E' : '#94A3B8' }}>
                 {p.label}
               </p>
-              <p className="text-xs text-gray-400 text-center leading-tight">
+              <p style={{ fontSize: 10, color: '#94A3B8', textAlign: 'center', lineHeight: 1.3 }}>
                 {p.fecha ? fmt(p.fecha) : '—'}
               </p>
             </div>
             {i < pasos.length - 1 && (
-              <div className={`h-0.5 flex-1 mx-1 -mt-5 rounded ${
-                stepActual > i ? 'bg-teal-400' : 'bg-gray-200'
-              }`} />
+              <div style={{
+                height: 2, flex: 1, marginTop: -20,
+                background: stepActual > i
+                  ? 'linear-gradient(90deg, #14B8A6, #06B6D4)'
+                  : '#F1F5F9',
+                borderRadius: 999,
+                transition: 'background 0.3s ease',
+              }} />
             )}
           </div>
         )
@@ -104,8 +115,7 @@ function LineaTiempo({ envio }) {
   )
 }
 
-// ── MODAL DETALLE DEL ENVÍO ───────────────────────────────────────────────────
-
+// ── Modal detalle del envío ────────────────────────────────────
 function ModalDetalle({ envio, onClose, onAvanzarEstado, onCancelar, avanzando }) {
   const [tab,              setTab]              = useState('resumen')
   const [editTransporte,   setEditTransporte]   = useState(false)
@@ -129,65 +139,95 @@ function ModalDetalle({ envio, onClose, onAvanzarEstado, onCancelar, avanzando }
     try {
       await api.patch(`/envios/${envio.idEnvio}/transporte`, transporte)
       setEditTransporte(false)
-      onClose(true) // true = recargar
+      onClose(true)
     } catch {
       setErrorTransporte('Error al guardar el transporte.')
     } finally { setGuardandoTransporte(false) }
   }
 
   const dest = envio.tipoDestino === 'CLIENTE' ? envio.clienteInfo : envio.puntoVentaInfo
+  const tabs = [
+    { key: 'resumen',    label: 'Resumen' },
+    { key: 'lotes',      label: `Lotes (${envio.totalLotes || 0})` },
+    { key: 'transporte', label: 'Transporte' },
+  ]
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[92vh] flex flex-col">
-
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16,
+      background: 'rgba(15,23,42,0.45)',
+      backdropFilter: 'blur(4px)',
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 20,
+        width: '100%', maxWidth: 600,
+        maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+        animation: 'log-modal-in 0.2s ease both',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+      }}>
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100">
-          <div className="flex items-start justify-between">
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono text-xs font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded-md">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{
+                  fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+                  background: '#F1F5F9', color: '#64748B',
+                  padding: '3px 8px', borderRadius: 6,
+                }}>
                   {envio.codigoGuia || `#${envio.idEnvio}`}
                 </span>
                 <Badge estado={envio.estado} />
               </div>
-              <h2 className="text-lg font-black text-gray-800">
+              <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', margin: 0 }}>
                 {envio.tipoDestino === 'CLIENTE'
                   ? (envio.nombreCliente || envio.clienteInfo?.razonSocial || '—')
                   : (envio.nombrePunto   || envio.puntoVentaInfo?.nombre   || '—')}
               </h2>
-              <p className="text-sm text-gray-400 flex items-center gap-1 mt-0.5">
-                <MapPin size={12} />
+              <p style={{ fontSize: 12, color: '#94A3B8', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <MapPin size={11} aria-hidden />
                 {envio.destinoCiudad}
-                <span className="mx-1">·</span>
+                <span style={{ margin: '0 4px' }}>·</span>
                 {envio.tipoDestino === 'CLIENTE' ? '👤 Cliente' : '🏪 Punto de venta'}
               </p>
             </div>
-            <button onClick={() => onClose(false)} className="p-2 rounded-lg hover:bg-gray-100">
-              <X size={18} className="text-gray-500" />
+            <button
+              onClick={() => onClose(false)}
+              style={{
+                width: 32, height: 32, borderRadius: 8, border: '1.5px solid #E2E8F0',
+                background: '#fff', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
+                transition: 'all 0.2s ease', flexShrink: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.color = '#EF4444' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#94A3B8' }}
+            >
+              <X size={15} aria-hidden />
             </button>
           </div>
 
-          {/* Línea de tiempo */}
           {envio.estado !== 'CANCELADO' && (
-            <div className="mt-4">
+            <div style={{ marginTop: 18 }}>
               <LineaTiempo envio={envio} />
             </div>
           )}
 
           {/* Tabs */}
-          <div className="flex gap-1 mt-4">
-            {[
-              { key: 'resumen',   label: 'Resumen'    },
-              { key: 'lotes',     label: `Lotes (${envio.totalLotes || 0})` },
-              { key: 'transporte',label: 'Transporte' },
-            ].map(t => (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  tab === t.key
-                    ? 'bg-teal-600 text-white'
-                    : 'text-gray-500 hover:bg-gray-100'
-                }`}>
+          <div style={{ display: 'flex', gap: 4, marginTop: 16 }}>
+            {tabs.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={{
+                  padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  border: 'none', cursor: 'pointer', transition: 'all 0.2s ease',
+                  background: tab === t.key ? 'linear-gradient(135deg, #14B8A6, #06B6D4)' : 'transparent',
+                  color: tab === t.key ? '#fff' : '#64748B',
+                  boxShadow: tab === t.key ? '0 2px 8px rgba(20,184,166,0.25)' : 'none',
+                }}
+              >
                 {t.label}
               </button>
             ))}
@@ -195,158 +235,165 @@ function ModalDetalle({ envio, onClose, onAvanzarEstado, onCancelar, avanzando }
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
 
-          {/* ── Tab: Resumen ── */}
+          {/* Tab: Resumen */}
           {tab === 'resumen' && (
-            <div className="space-y-4">
-
-              {/* Destino info */}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs font-bold text-gray-400 uppercase mb-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Info destino */}
+              <div style={{
+                background: 'linear-gradient(135deg, #F0FDFA, #F8FAFC)',
+                border: '1px solid #CCFBF1', borderRadius: 12, padding: '14px 16px',
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#14B8A6', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
                   {envio.tipoDestino === 'CLIENTE' ? 'Cliente' : 'Punto de venta'}
                 </p>
                 {dest ? (
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-xs text-gray-400">Nombre</p>
-                      <p className="font-semibold text-gray-700">
-                        {dest.razonSocial || dest.nombre}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Ciudad</p>
-                      <p className="font-medium text-gray-600">{dest.ciudad || '—'}</p>
-                    </div>
-                    {dest.telefono && (
-                      <div>
-                        <p className="text-xs text-gray-400">Teléfono</p>
-                        <p className="font-medium text-gray-600">{dest.telefono}</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {[
+                      { label: 'Nombre',   val: dest.razonSocial || dest.nombre },
+                      { label: 'Ciudad',   val: dest.ciudad },
+                      dest.telefono && { label: 'Teléfono', val: dest.telefono },
+                      (dest.email || dest.responsable) && { label: dest.email ? 'Correo' : 'Responsable', val: dest.email || dest.responsable },
+                    ].filter(Boolean).map(f => (
+                      <div key={f.label}>
+                        <p style={{ fontSize: 10, color: '#94A3B8', margin: 0 }}>{f.label}</p>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.val || '—'}</p>
                       </div>
-                    )}
-                    {(dest.email || dest.responsable) && (
-                      <div>
-                        <p className="text-xs text-gray-400">{dest.email ? 'Correo' : 'Responsable'}</p>
-                        <p className="font-medium text-gray-600 text-xs truncate">
-                          {dest.email || dest.responsable}
-                        </p>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400">Sin información adicional.</p>
+                  <p style={{ fontSize: 13, color: '#94A3B8' }}>Sin información adicional.</p>
                 )}
               </div>
 
-              {/* Totales */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-teal-50 rounded-xl p-4 text-center">
-                  <p className="text-xs text-teal-600 font-semibold">Total kilos</p>
-                  <p className="text-2xl font-black text-teal-700">
+              {/* Métricas */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ background: '#F0FDFA', border: '1px solid #CCFBF1', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 11, color: '#0F766E', fontWeight: 700, margin: 0 }}>Total kilos</p>
+                  <p style={{ fontSize: 26, fontWeight: 900, color: '#14B8A6', margin: '4px 0 0', lineHeight: 1 }}>
                     {parseFloat(envio.totalKilos || 0).toFixed(1)}
-                    <span className="text-sm font-normal ml-1">kg</span>
+                    <span style={{ fontSize: 13, fontWeight: 400, color: '#94A3B8', marginLeft: 4 }}>kg</span>
                   </p>
                 </div>
-                <div className="bg-blue-50 rounded-xl p-4 text-center">
-                  <p className="text-xs text-blue-600 font-semibold">Total lotes</p>
-                  <p className="text-2xl font-black text-blue-700">{envio.totalLotes || 0}</p>
+                <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 11, color: '#1E40AF', fontWeight: 700, margin: 0 }}>Total lotes</p>
+                  <p style={{ fontSize: 26, fontWeight: 900, color: '#3B82F6', margin: '4px 0 0', lineHeight: 1 }}>
+                    {envio.totalLotes || 0}
+                  </p>
                 </div>
               </div>
 
               {/* Fechas */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 {[
-                  { label: 'Preparación',        val: fmt(envio.fechaPreparacion)      },
-                  { label: 'Salida',             val: fmt(envio.fechaSalida)           },
-                  { label: 'Entrega estimada',   val: fmtDate(envio.fechaEntregaEstimada) },
-                  { label: 'Entrega real',       val: fmt(envio.fechaEntregaReal)      },
+                  { label: 'Preparación',      val: fmt(envio.fechaPreparacion) },
+                  { label: 'Salida',           val: fmt(envio.fechaSalida) },
+                  { label: 'Entrega estimada', val: fmtDate(envio.fechaEntregaEstimada) },
+                  { label: 'Entrega real',     val: fmt(envio.fechaEntregaReal) },
                 ].map(f => (
-                  <div key={f.label} className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-400">{f.label}</p>
-                    <p className="font-medium text-gray-700">{f.val}</p>
+                  <div key={f.label} style={{ background: '#FAFBFC', border: '1px solid #F1F5F9', borderRadius: 10, padding: '10px 12px' }}>
+                    <p style={{ fontSize: 10, color: '#94A3B8', margin: 0 }}>{f.label}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', margin: '3px 0 0' }}>{f.val}</p>
                   </div>
                 ))}
               </div>
 
-              {/* Observaciones */}
               {envio.observaciones && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  <p className="text-xs font-semibold text-amber-700 uppercase mb-1">Observaciones</p>
-                  <p className="text-sm text-amber-800">{envio.observaciones}</p>
+                <div style={{ background: '#FFFBEB', border: '1px solid #FED7AA', borderRadius: 10, padding: '12px 14px' }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Observaciones</p>
+                  <p style={{ fontSize: 13, color: '#78350F', margin: 0 }}>{envio.observaciones}</p>
                 </div>
               )}
 
-              {/* Evidencia entrega */}
               {envio.estado === 'ENTREGADO' && (envio.nombreReceptor || envio.observacionEntrega) && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-3">
-                  <p className="text-xs font-semibold text-green-700 uppercase mb-2">Evidencia de entrega</p>
+                <div style={{ background: '#F0FDF4', border: '1px solid #A7F3D0', borderRadius: 10, padding: '12px 14px' }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Evidencia de entrega</p>
                   {envio.nombreReceptor && (
-                    <p className="text-sm text-green-800">
-                      <span className="font-medium">Recibido por: </span>{envio.nombreReceptor}
+                    <p style={{ fontSize: 13, color: '#065F46', margin: 0 }}>
+                      <span style={{ fontWeight: 700 }}>Recibido por: </span>{envio.nombreReceptor}
                     </p>
                   )}
                   {envio.observacionEntrega && (
-                    <p className="text-sm text-green-700 mt-1">{envio.observacionEntrega}</p>
+                    <p style={{ fontSize: 13, color: '#14532D', margin: '4px 0 0' }}>{envio.observacionEntrega}</p>
                   )}
                 </div>
               )}
             </div>
           )}
 
-          {/* ── Tab: Lotes ── */}
+          {/* Tab: Lotes */}
           {tab === 'lotes' && (
             <div>
-              {envio.lotes?.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-8">Sin lotes asociados.</p>
+              {!envio.lotes?.length ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#94A3B8', fontSize: 13 }}>
+                  Sin lotes asociados.
+                </div>
               ) : (
-                <div className="space-y-2">
-                  {envio.lotes?.map(lote => (
-                    <div key={lote.idLote}
-                      className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center shrink-0">
-                        <Snowflake size={15} className="text-teal-600" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {envio.lotes.map(lote => (
+                    <div key={lote.idLote} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '12px 14px',
+                      background: '#FAFBFC', border: '1px solid #F1F5F9',
+                      borderRadius: 12,
+                    }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                        background: '#CCFBF1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Snowflake size={15} color="#0F766E" aria-hidden />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold font-mono text-gray-800">{lote.codigoLote}</p>
-                        <p className="text-xs text-gray-500">{lote.nombreProductor}</p>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#0F172A', margin: 0 }}>{lote.codigoLote}</p>
+                        <p style={{ fontSize: 11, color: '#94A3B8', margin: '2px 0 0' }}>{lote.nombreProductor}</p>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-teal-700">
-                          {parseFloat(lote.kilos).toFixed(1)} kg
-                        </p>
-                      </div>
+                      <p style={{ fontSize: 15, fontWeight: 900, color: '#14B8A6', flexShrink: 0 }}>
+                        {parseFloat(lote.kilos).toFixed(1)} <span style={{ fontSize: 11, fontWeight: 400, color: '#94A3B8' }}>kg</span>
+                      </p>
                     </div>
                   ))}
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-200 px-1">
-                    <p className="text-xs font-semibold text-gray-500">Total</p>
-                    <p className="text-sm font-black text-teal-700">
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    paddingTop: 10, borderTop: '1px solid #F1F5F9', paddingLeft: 2,
+                  }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B' }}>Total</span>
+                    <span style={{ fontSize: 16, fontWeight: 900, color: '#14B8A6' }}>
                       {parseFloat(envio.totalKilos || 0).toFixed(1)} kg
-                    </p>
+                    </span>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* ── Tab: Transporte ── */}
+          {/* Tab: Transporte */}
           {tab === 'transporte' && (
             <div>
               {!editTransporte ? (
-                <div className="space-y-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[
                     { label: 'Empresa transportadora', val: envio.empresaTransportadora, icon: Building2 },
-                    { label: 'Conductor',              val: envio.nombreConductor,       icon: User      },
-                    { label: 'Teléfono conductor',     val: envio.telefonoConductor,     icon: Phone     },
-                    { label: 'Placa del vehículo',     val: envio.placaVehiculo,         icon: Hash      },
-                    { label: 'Tipo de vehículo',       val: envio.tipoVehiculo,          icon: Truck     },
+                    { label: 'Conductor',              val: envio.nombreConductor,       icon: User },
+                    { label: 'Teléfono conductor',     val: envio.telefonoConductor,     icon: Phone },
+                    { label: 'Placa del vehículo',     val: envio.placaVehiculo,         icon: Hash },
+                    { label: 'Tipo de vehículo',       val: envio.tipoVehiculo,          icon: Truck },
                   ].map(f => (
-                    <div key={f.label} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                      <div className="w-8 h-8 bg-white rounded-lg border border-gray-200 flex items-center justify-center shrink-0">
-                        <f.icon size={14} className="text-gray-400" />
+                    <div key={f.label} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '12px 14px', background: '#FAFBFC',
+                      border: '1px solid #F1F5F9', borderRadius: 12,
+                    }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+                        background: '#fff', border: '1.5px solid #E2E8F0',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <f.icon size={14} color="#94A3B8" aria-hidden />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">{f.label}</p>
-                        <p className={`text-sm font-medium ${f.val ? 'text-gray-700' : 'text-gray-300'}`}>
+                        <p style={{ fontSize: 10, color: '#94A3B8', margin: 0 }}>{f.label}</p>
+                        <p style={{ fontSize: 13, fontWeight: f.val ? 600 : 400, color: f.val ? '#0F172A' : '#CBD5E1', margin: '2px 0 0' }}>
                           {f.val || 'Sin registrar'}
                         </p>
                       </div>
@@ -354,64 +401,70 @@ function ModalDetalle({ envio, onClose, onAvanzarEstado, onCancelar, avanzando }
                   ))}
 
                   {envio.estado !== 'ENTREGADO' && envio.estado !== 'CANCELADO' && (
-                    <button onClick={() => setEditTransporte(true)}
-                      className="w-full mt-2 py-2.5 border-2 border-dashed border-teal-200 text-teal-600 rounded-xl text-sm font-semibold hover:border-teal-400 hover:bg-teal-50 transition-all">
-                      {envio.empresaTransportadora ? 'Actualizar transporte' : '+ Registrar transporte'}
+                    <button
+                      onClick={() => setEditTransporte(true)}
+                      style={{
+                        width: '100%', marginTop: 4, padding: '12px',
+                        border: '2px dashed #CCFBF1', borderRadius: 12,
+                        background: 'transparent', cursor: 'pointer',
+                        fontSize: 13, fontWeight: 600, color: '#14B8A6',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#14B8A6'; e.currentTarget.style.background = '#F0FDFA' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#CCFBF1'; e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {envio.empresaTransportadora ? 'Actualizar transporte' : '+ Registrar información de transporte'}
                     </button>
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {[
                     { key: 'empresaTransportadora', label: 'Empresa transportadora', placeholder: 'Transportes Catatumbo' },
-                    { key: 'nombreConductor',       label: 'Nombre del conductor',   placeholder: 'Carlos Pérez'          },
-                    { key: 'telefonoConductor',     label: 'Teléfono conductor',      placeholder: '3101234567'            },
-                    { key: 'placaVehiculo',         label: 'Placa del vehículo',      placeholder: 'ABC-123'               },
+                    { key: 'nombreConductor',       label: 'Nombre del conductor',   placeholder: 'Carlos Pérez' },
+                    { key: 'telefonoConductor',     label: 'Teléfono conductor',     placeholder: '3101234567' },
+                    { key: 'placaVehiculo',         label: 'Placa del vehículo',     placeholder: 'ABC-123' },
                   ].map(f => (
-                    <div key={f.key}>
-                      <label className="text-sm font-semibold text-gray-700 block mb-1">{f.label}</label>
+                    <ModalField key={f.key} label={f.label}>
                       <input
+                        className="log-input"
                         value={transporte[f.key]}
                         onChange={e => setTransporte(prev => ({ ...prev, [f.key]: e.target.value }))}
                         placeholder={f.placeholder}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
+                        style={inputBase}
                       />
-                    </div>
+                    </ModalField>
                   ))}
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-1">Tipo de vehículo</label>
-                    <select
+                  <ModalField label="Tipo de vehículo">
+                    <select className="log-input" style={inputBase}
                       value={transporte.tipoVehiculo}
-                      onChange={e => setTransporte(prev => ({ ...prev, tipoVehiculo: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                      onChange={e => setTransporte(prev => ({ ...prev, tipoVehiculo: e.target.value }))}>
                       <option value="">Seleccionar...</option>
                       {TIPOS_VEHICULO.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-1">Fecha estimada de entrega</label>
-                    <input type="date"
+                  </ModalField>
+                  <ModalField label="Fecha estimada de entrega">
+                    <input type="date" className="log-input" style={inputBase}
                       value={transporte.fechaEntregaEstimada}
-                      onChange={e => setTransporte(prev => ({ ...prev, fechaEntregaEstimada: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
-                    />
-                  </div>
+                      onChange={e => setTransporte(prev => ({ ...prev, fechaEntregaEstimada: e.target.value }))} />
+                  </ModalField>
 
                   {errorTransporte && (
-                    <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-sm">
+                    <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 9, fontSize: 13, color: '#991B1B' }}>
                       {errorTransporte}
                     </div>
                   )}
 
-                  <div className="flex gap-2 pt-1">
-                    <button onClick={() => setEditTransporte(false)}
-                      className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                  <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+                    <button className="log-btn-outline" onClick={() => setEditTransporte(false)} style={{ flex: 1 }}>
                       Cancelar
                     </button>
-                    <button onClick={handleGuardarTransporte} disabled={guardandoTransporte}
-                      className="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60">
+                    <button
+                      onClick={handleGuardarTransporte}
+                      disabled={guardandoTransporte}
+                      className="log-btn-primary"
+                      style={{ flex: 1, opacity: guardandoTransporte ? 0.6 : 1 }}
+                    >
                       {guardandoTransporte ? 'Guardando...' : 'Guardar'}
                     </button>
                   </div>
@@ -421,30 +474,37 @@ function ModalDetalle({ envio, onClose, onAvanzarEstado, onCancelar, avanzando }
           )}
         </div>
 
-        {/* Footer con acciones */}
-        <div className="px-6 py-4 border-t border-gray-100 flex gap-2">
-          <button onClick={() => onClose(false)}
-            className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+        {/* Footer */}
+        <div style={{ padding: '16px 24px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10 }}>
+          <button className="log-btn-outline" onClick={() => onClose(false)} style={{ flex: 1 }}>
             Cerrar
           </button>
           {puedeCancelar && (
             <button
               onClick={() => onCancelar(envio)}
-              className="px-4 py-2.5 border border-red-200 text-red-500 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors flex items-center gap-1.5">
-              <Ban size={14} />
-              Cancelar envío
+              style={{
+                padding: '9px 16px', border: '1.5px solid #FECACA', borderRadius: 10,
+                background: 'transparent', color: '#EF4444', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <Ban size={14} aria-hidden /> Cancelar envío
             </button>
           )}
           {puedeAvanzar && (
             <button
+              className="log-btn-primary"
               onClick={() => onAvanzarEstado(envio)}
               disabled={avanzando === envio.idEnvio}
-              className="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
-              {avanzando === envio.idEnvio ? (
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <ArrowRight size={15} />
-              )}
+              style={{ flex: 1, opacity: avanzando === envio.idEnvio ? 0.6 : 1 }}
+            >
+              {avanzando === envio.idEnvio
+                ? <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.5)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
+                : <ArrowRight size={14} aria-hidden />
+              }
               {SIGUIENTE_LABEL[envio.estado]}
             </button>
           )}
@@ -454,8 +514,7 @@ function ModalDetalle({ envio, onClose, onAvanzarEstado, onCancelar, avanzando }
   )
 }
 
-// ── MODAL CREAR ENVÍO ─────────────────────────────────────────────────────────
-
+// ── Modal crear envío ──────────────────────────────────────────
 function ModalCrear({ lotesDisponibles, clientes, puntos, onClose, onCreado }) {
   const [form, setForm] = useState({
     destinoCiudad: '', tipoDestino: '', idCliente: '', idPunto: '',
@@ -464,9 +523,9 @@ function ModalCrear({ lotesDisponibles, clientes, puntos, onClose, onCreado }) {
     telefonoConductor: '', placaVehiculo: '', tipoVehiculo: '',
     fechaEntregaEstimada: '',
   })
-  const [paso,     setPaso]     = useState(1) // 1=lotes+destino, 2=transporte(opcional)
-  const [error,    setError]    = useState('')
-  const [guardando,setGuardando]= useState(false)
+  const [paso,      setPaso]      = useState(1)
+  const [error,     setError]     = useState('')
+  const [guardando, setGuardando] = useState(false)
 
   const setF = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
 
@@ -518,71 +577,121 @@ function ModalCrear({ lotesDisponibles, clientes, puntos, onClose, onCreado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[92vh] flex flex-col">
-
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16,
+      background: 'rgba(15,23,42,0.45)',
+      backdropFilter: 'blur(4px)',
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 20,
+        width: '100%', maxWidth: 600,
+        maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+        animation: 'log-modal-in 0.2s ease both',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+      }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-          <div>
-            <h2 className="text-lg font-bold text-gray-800">Nuevo Envío</h2>
-            <div className="flex items-center gap-2 mt-1">
-              {[1, 2].map(p => (
-                <div key={p} className="flex items-center gap-1">
-                  <div className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${
-                    paso >= p ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-400'
-                  }`}>{p}</div>
-                  <span className={`text-xs ${paso >= p ? 'text-teal-600 font-medium' : 'text-gray-400'}`}>
-                    {p === 1 ? 'Destino y lotes' : 'Transporte (opcional)'}
-                  </span>
-                  {p < 2 && <ArrowRight size={10} className="text-gray-300 ml-1" />}
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                background: 'linear-gradient(135deg, #14B8A6, #06B6D4)',
+                boxShadow: '0 3px 10px rgba(20,184,166,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Truck size={20} color="#fff" aria-hidden />
+              </div>
+              <div>
+                <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>Nuevo Envío</h2>
+                {/* Indicador de paso */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  {[1, 2].map(p => (
+                    <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 800,
+                        background: paso >= p ? 'linear-gradient(135deg, #14B8A6, #06B6D4)' : '#F1F5F9',
+                        color: paso >= p ? '#fff' : '#94A3B8',
+                        boxShadow: paso >= p ? '0 2px 6px rgba(20,184,166,0.3)' : 'none',
+                      }}>{p}</div>
+                      <span style={{ fontSize: 11, color: paso >= p ? '#0F766E' : '#94A3B8', fontWeight: paso >= p ? 600 : 400 }}>
+                        {p === 1 ? 'Destino y lotes' : 'Transporte (opcional)'}
+                      </span>
+                      {p < 2 && <ArrowRight size={10} color="#CBD5E1" aria-hidden />}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
+            <button
+              onClick={onClose}
+              style={{
+                width: 32, height: 32, borderRadius: 8, border: '1.5px solid #E2E8F0',
+                background: '#fff', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.color = '#EF4444' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#94A3B8' }}
+            >
+              <X size={15} aria-hidden />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100">
-            <X size={18} className="text-gray-500" />
-          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* ── Paso 1 ── */}
+          {/* Paso 1 */}
           {paso === 1 && (
             <>
               {/* Lotes */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-gray-700">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Lotes disponibles en Cuarto Frío *
                   </label>
                   {form.lotesSeleccionados.length > 0 && (
-                    <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-medium">
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: '#CCFBF1', color: '#0F766E' }}>
                       {form.lotesSeleccionados.length} selec. · {kilosSeleccionados.toFixed(1)} kg
                     </span>
                   )}
                 </div>
                 {lotesDisponibles.length === 0 ? (
-                  <div className="bg-gray-50 rounded-xl p-4 text-center text-sm text-gray-500">
+                  <div style={{ background: '#F8FAFC', border: '1px solid #F1F5F9', borderRadius: 12, padding: '20px', textAlign: 'center', fontSize: 13, color: '#94A3B8' }}>
                     No hay lotes disponibles en el Cuarto Frío.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, maxHeight: 176, overflowY: 'auto', paddingRight: 2 }}>
                     {lotesDisponibles.map(lote => {
                       const sel = form.lotesSeleccionados.includes(lote.idLote)
                       return (
-                        <button key={lote.idLote} onClick={() => toggleLote(lote.idLote)}
-                          className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                            sel ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-teal-200 hover:bg-teal-50/30'
-                          }`}>
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${sel ? 'bg-teal-200' : 'bg-gray-100'}`}>
-                            <Snowflake size={14} className={sel ? 'text-teal-700' : 'text-gray-400'} />
+                        <button
+                          key={lote.idLote}
+                          onClick={() => toggleLote(lote.idLote)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '10px 12px', borderRadius: 12, textAlign: 'left',
+                            border: `2px solid ${sel ? '#14B8A6' : '#F1F5F9'}`,
+                            background: sel ? '#F0FDFA' : '#FAFBFC',
+                            cursor: 'pointer', transition: 'all 0.18s ease',
+                          }}
+                        >
+                          <div style={{
+                            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                            background: sel ? '#CCFBF1' : '#F1F5F9',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <Snowflake size={14} color={sel ? '#0F766E' : '#94A3B8'} aria-hidden />
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold font-mono text-gray-800 truncate">{lote.codigoLote}</p>
-                            <p className="text-xs text-gray-500">{parseFloat(lote.kilos).toFixed(1)} kg</p>
-                            <p className="text-xs text-gray-400 truncate">{lote.nombreProductor}</p>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <p style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: '#0F172A', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lote.codigoLote}</p>
+                            <p style={{ fontSize: 11, color: '#64748B', margin: '2px 0 0' }}>{parseFloat(lote.kilos).toFixed(1)} kg</p>
+                            <p style={{ fontSize: 10, color: '#94A3B8', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lote.nombreProductor}</p>
                           </div>
-                          {sel && <CheckCircle size={16} className="text-teal-600 shrink-0 ml-auto" />}
+                          {sel && <CheckCircle size={15} color="#14B8A6" style={{ flexShrink: 0 }} aria-hidden />}
                         </button>
                       )
                     })}
@@ -592,16 +701,24 @@ function ModalCrear({ lotesDisponibles, clientes, puntos, onClose, onCreado }) {
 
               {/* Ciudad */}
               <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-2">Ciudad / Destino *</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+                  Ciudad / Destino *
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   {DESTINOS.map(d => (
-                    <button key={d} onClick={() => setF('destinoCiudad', d)}
-                      className={`py-2 px-3 rounded-lg border text-xs font-medium text-left transition-all ${
-                        form.destinoCiudad === d
-                          ? 'border-teal-500 bg-teal-50 text-teal-700'
-                          : 'border-gray-200 text-gray-600 hover:border-teal-200'
-                      }`}>
-                      <MapPin size={11} className="inline mr-1 opacity-60" />{d}
+                    <button
+                      key={d}
+                      onClick={() => setF('destinoCiudad', d)}
+                      style={{
+                        padding: '8px 12px', borderRadius: 10, textAlign: 'left',
+                        fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                        border: `1.5px solid ${form.destinoCiudad === d ? '#14B8A6' : '#F1F5F9'}`,
+                        background: form.destinoCiudad === d ? '#F0FDFA' : '#FAFBFC',
+                        color: form.destinoCiudad === d ? '#0F766E' : '#64748B',
+                        transition: 'all 0.18s ease',
+                      }}
+                    >
+                      <MapPin size={10} style={{ marginRight: 5, opacity: 0.6 }} aria-hidden />{d}
                     </button>
                   ))}
                 </div>
@@ -609,32 +726,34 @@ function ModalCrear({ lotesDisponibles, clientes, puntos, onClose, onCreado }) {
 
               {/* Tipo destino */}
               <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-2">Tipo de destino *</label>
-                <div className="grid grid-cols-2 gap-3">
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+                  Tipo de destino *
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {[
                     { val: 'CLIENTE',     label: '👤 Cliente',        desc: 'Comprador mayorista o minorista' },
-                    { val: 'PUNTO_VENTA', label: '🏪 Punto de venta', desc: 'Punto físico de ASOPISTAR'       },
+                    { val: 'PUNTO_VENTA', label: '🏪 Punto de venta', desc: 'Punto físico de ASOPISTAR' },
                   ].map(t => (
-                    <button key={t.val}
+                    <button
+                      key={t.val}
                       onClick={() => setForm(prev => ({ ...prev, tipoDestino: t.val, idCliente: '', idPunto: '' }))}
-                      className={`p-3 rounded-xl border-2 text-left transition-all ${
-                        form.tipoDestino === t.val ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-teal-200'
-                      }`}>
-                      <p className="text-sm font-semibold text-gray-700">{t.label}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{t.desc}</p>
+                      style={{
+                        padding: '12px 14px', borderRadius: 12, textAlign: 'left', cursor: 'pointer',
+                        border: `2px solid ${form.tipoDestino === t.val ? '#14B8A6' : '#F1F5F9'}`,
+                        background: form.tipoDestino === t.val ? '#F0FDFA' : '#FAFBFC',
+                        transition: 'all 0.18s ease',
+                      }}
+                    >
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', margin: 0 }}>{t.label}</p>
+                      <p style={{ fontSize: 11, color: '#94A3B8', margin: '3px 0 0' }}>{t.desc}</p>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Cliente */}
               {form.tipoDestino === 'CLIENTE' && (
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">
-                    Cliente * {clientes.length === 0 && <span className="text-red-400 text-xs font-normal">(Sin datos)</span>}
-                  </label>
-                  <select value={form.idCliente} onChange={e => setF('idCliente', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                <ModalField label={`Cliente *${clientes.length === 0 ? ' (Sin datos)' : ''}`}>
+                  <select className="log-input" style={inputBase} value={form.idCliente} onChange={e => setF('idCliente', e.target.value)}>
                     <option value="">Seleccionar cliente...</option>
                     {clientes.map(c => (
                       <option key={c.idCliente} value={c.idCliente}>
@@ -642,119 +761,121 @@ function ModalCrear({ lotesDisponibles, clientes, puntos, onClose, onCreado }) {
                       </option>
                     ))}
                   </select>
-                </div>
+                </ModalField>
               )}
 
-              {/* Punto de venta */}
               {form.tipoDestino === 'PUNTO_VENTA' && (
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">
-                    Punto de venta * {puntos.length === 0 && <span className="text-red-400 text-xs font-normal">(Sin datos)</span>}
-                  </label>
-                  <select value={form.idPunto} onChange={e => setF('idPunto', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                <ModalField label={`Punto de venta *${puntos.length === 0 ? ' (Sin datos)' : ''}`}>
+                  <select className="log-input" style={inputBase} value={form.idPunto} onChange={e => setF('idPunto', e.target.value)}>
                     <option value="">Seleccionar punto de venta...</option>
                     {puntos.map(p => (
-                      <option key={p.idPunto} value={p.idPunto}>
-                        {p.nombre} — {p.ciudad}
-                      </option>
+                      <option key={p.idPunto} value={p.idPunto}>{p.nombre} — {p.ciudad}</option>
                     ))}
                   </select>
-                </div>
+                </ModalField>
               )}
 
-              {/* Observaciones */}
-              <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-1">Observaciones</label>
-                <textarea value={form.observaciones} onChange={e => setF('observaciones', e.target.value)}
-                  rows={2} placeholder="Condiciones de transporte, novedades..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 resize-none"
+              <ModalField label="Observaciones">
+                <textarea
+                  className="log-input"
+                  value={form.observaciones}
+                  onChange={e => setF('observaciones', e.target.value)}
+                  rows={2}
+                  placeholder="Condiciones de transporte, novedades..."
+                  style={{ ...inputBase, resize: 'none' }}
                 />
-              </div>
+              </ModalField>
 
               {/* Resumen */}
               {form.lotesSeleccionados.length > 0 && form.destinoCiudad && (
-                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-teal-700 uppercase mb-2">Resumen del envío</p>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-teal-800">
+                <div style={{
+                  background: 'linear-gradient(135deg, #F0FDFA, #F8FAFC)',
+                  border: '1px solid #CCFBF1', borderRadius: 12, padding: '14px 16px',
+                }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: '#14B8A6', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                    Resumen del envío
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#0F766E' }}>
                       {form.lotesSeleccionados.length} lote{form.lotesSeleccionados.length > 1 ? 's' : ''} → <strong>{form.destinoCiudad}</strong>
                     </span>
-                    <span className="font-bold text-teal-700 text-base">{kilosSeleccionados.toFixed(1)} kg</span>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: '#14B8A6' }}>
+                      {kilosSeleccionados.toFixed(1)} kg
+                    </span>
                   </div>
                 </div>
               )}
             </>
           )}
 
-          {/* ── Paso 2: Transporte ── */}
+          {/* Paso 2: Transporte */}
           {paso === 2 && (
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                <p className="text-xs text-blue-700 font-medium">
-                  ℹ️ La información de transporte es opcional. Puedes completarla ahora o después desde el detalle del envío.
-                </p>
+            <>
+              <div style={{
+                padding: '12px 14px',
+                background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10,
+                fontSize: 12, color: '#1E40AF',
+              }}>
+                ℹ️ La información de transporte es opcional. Puedes completarla ahora o después desde el detalle del envío.
               </div>
               {[
                 { key: 'empresaTransportadora', label: 'Empresa transportadora', placeholder: 'Transportes Catatumbo' },
-                { key: 'nombreConductor',       label: 'Nombre del conductor',   placeholder: 'Carlos Pérez'          },
-                { key: 'telefonoConductor',     label: 'Teléfono del conductor', placeholder: '3101234567'            },
-                { key: 'placaVehiculo',         label: 'Placa del vehículo',     placeholder: 'ABC-123'               },
+                { key: 'nombreConductor',       label: 'Nombre del conductor',   placeholder: 'Carlos Pérez' },
+                { key: 'telefonoConductor',     label: 'Teléfono del conductor', placeholder: '3101234567' },
+                { key: 'placaVehiculo',         label: 'Placa del vehículo',     placeholder: 'ABC-123' },
               ].map(f => (
-                <div key={f.key}>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">{f.label}</label>
-                  <input value={form[f.key]} onChange={e => setF(f.key, e.target.value)}
-                    placeholder={f.placeholder}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
-                  />
-                </div>
+                <ModalField key={f.key} label={f.label}>
+                  <input className="log-input" value={form[f.key]} onChange={e => setF(f.key, e.target.value)} placeholder={f.placeholder} style={inputBase} />
+                </ModalField>
               ))}
-              <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-1">Tipo de vehículo</label>
-                <select value={form.tipoVehiculo} onChange={e => setF('tipoVehiculo', e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+              <ModalField label="Tipo de vehículo">
+                <select className="log-input" value={form.tipoVehiculo} onChange={e => setF('tipoVehiculo', e.target.value)} style={inputBase}>
                   <option value="">Seleccionar...</option>
                   {TIPOS_VEHICULO.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-1">Fecha estimada de entrega</label>
-                <input type="date" value={form.fechaEntregaEstimada}
-                  onChange={e => setF('fechaEntregaEstimada', e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
-                />
-              </div>
-            </div>
+              </ModalField>
+              <ModalField label="Fecha estimada de entrega">
+                <input type="date" className="log-input" value={form.fechaEntregaEstimada} onChange={e => setF('fechaEntregaEstimada', e.target.value)} style={inputBase} />
+              </ModalField>
+            </>
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-              <AlertTriangle size={15} className="shrink-0" /> {error}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '12px 14px', background: '#FEF2F2',
+              border: '1px solid #FECACA', borderRadius: 10,
+              fontSize: 13, color: '#991B1B',
+            }}>
+              <AlertTriangle size={14} aria-hidden /> {error}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+        <div style={{ padding: '16px 24px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10 }}>
           {paso === 1 ? (
             <>
-              <button onClick={onClose}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Cancelar
-              </button>
-              <button onClick={() => { setError(''); if (validarPaso1()) setPaso(2) }}
-                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
-                Siguiente <ArrowRight size={15} />
+              <button className="log-btn-outline" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
+              <button
+                className="log-btn-primary"
+                style={{ flex: 1 }}
+                onClick={() => { setError(''); if (validarPaso1()) setPaso(2) }}
+              >
+                Siguiente <ArrowRight size={14} aria-hidden />
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => { setError(''); setPaso(1) }}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <button className="log-btn-outline" onClick={() => { setError(''); setPaso(1) }} style={{ flex: 1 }}>
                 Atrás
               </button>
-              <button onClick={handleCrear} disabled={guardando}
-                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60">
+              <button
+                className="log-btn-primary"
+                onClick={handleCrear}
+                disabled={guardando}
+                style={{ flex: 1, opacity: guardando ? 0.6 : 1 }}
+              >
                 {guardando ? 'Creando envío...' : 'Crear envío'}
               </button>
             </>
@@ -765,8 +886,7 @@ function ModalCrear({ lotesDisponibles, clientes, puntos, onClose, onCreado }) {
   )
 }
 
-// ── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
-
+// ── Componente principal ───────────────────────────────────────
 export default function Logistica() {
   const [envios,           setEnvios]           = useState([])
   const [lotesDisponibles, setLotesDisponibles] = useState([])
@@ -787,12 +907,10 @@ export default function Logistica() {
       setLoading(true)
       const enviosRes = await api.get('/envios')
       setEnvios(enviosRes.data)
-
       const lotesRes = await api.get('/lotes-cuarto-frio')
       setLotesDisponibles(lotesRes.data.filter(l => l.estadoDecision === 'ALMACENADO'))
-
-      try { setClientes((await api.get('/clientes')).data)    } catch { setClientes([]) }
-      try { setPuntos((await api.get('/puntos-venta')).data)  } catch { setPuntos([])  }
+      try { setClientes((await api.get('/clientes')).data)   } catch { setClientes([]) }
+      try { setPuntos((await api.get('/puntos-venta')).data) } catch { setPuntos([])  }
     } catch (err) {
       console.error('Error cargando logística:', err)
     } finally { setLoading(false) }
@@ -855,193 +973,418 @@ export default function Logistica() {
     if (recargar) cargarTodo()
   }
 
+  const kpiCards = [
+    { icon: Clock,       label: 'Preparados',  value: stats.preparado, sub: `${stats.cancelado} cancelado${stats.cancelado !== 1 ? 's' : ''}`, bg: '#FFFBEB', color: '#92400E', border: '#FED7AA', iconBg: '#F59E0B' },
+    { icon: Truck,       label: 'En camino',   value: stats.enCamino,  sub: 'Envíos activos en ruta',                                           bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE', iconBg: '#3B82F6' },
+    { icon: CheckCircle, label: 'Entregados',  value: stats.entregado, sub: `${stats.total} total registrados`,                                  bg: '#F0FDF4', color: '#065F46', border: '#A7F3D0', iconBg: '#10B981' },
+    { icon: Package,     label: 'Kilos total', value: `${stats.kilosTotal.toFixed(0)} kg`, sub: 'distribuidos en total',                         bg: '#F0FDFA', color: '#0F766E', border: '#CCFBF1', iconBg: '#14B8A6' },
+  ]
+
   return (
-    <div className="relative">
+    <div style={{ background: '#F8FAFC', minHeight: '100%' }}>
+      <style>{`
+        @keyframes log-fade {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes log-modal-in {
+          from { opacity: 0; transform: scale(0.96); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes log-toast {
+          0%   { opacity: 0; transform: translateY(-10px); }
+          10%  { opacity: 1; transform: translateY(0); }
+          85%  { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes log-pulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.4; }
+        }
+        .log-card {
+          animation: log-fade 0.22s ease both;
+          transition: all 0.2s ease;
+        }
+        .log-card:hover {
+          border-color: rgba(20,184,166,0.3) !important;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+          transform: translateY(-2px);
+        }
+        .log-row {
+          transition: background 0.15s ease;
+          cursor: pointer;
+        }
+        .log-row:hover {
+          background: #F8FAFC !important;
+        }
+        .log-btn-primary {
+          background: linear-gradient(135deg, #14B8A6, #06B6D4);
+          color: #fff; border: none; border-radius: 10px;
+          padding: 9px 18px; font-size: 13px; font-weight: 700;
+          cursor: pointer; display: inline-flex; align-items: center;
+          justify-content: center; gap: 6px;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 8px rgba(20,184,166,0.25);
+        }
+        .log-btn-primary:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(20,184,166,0.4);
+        }
+        .log-btn-outline {
+          background: transparent; color: #64748B;
+          border: 1.5px solid #E2E8F0; border-radius: 10px;
+          padding: 9px 18px; font-size: 13px; font-weight: 600;
+          cursor: pointer; transition: all 0.2s ease;
+        }
+        .log-btn-outline:hover {
+          background: #F8FAFC; border-color: #CBD5E1;
+        }
+        .log-input:focus {
+          border-color: #14B8A6 !important;
+          box-shadow: 0 0 0 3px rgba(20,184,166,0.12) !important;
+          background: #fff !important;
+        }
+        .log-skeleton {
+          animation: log-pulse 1.4s ease infinite;
+          background: #F1F5F9; border-radius: 6px;
+        }
+        .log-toast {
+          animation: log-toast 3s ease forwards;
+        }
+      `}</style>
 
       {/* Toast */}
       {toastMsg && (
-        <div className="fixed top-6 right-6 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2">
-          <CheckCircle size={16} className="text-teal-400" />
+        <div className="log-toast" style={{
+          position: 'fixed', top: 24, right: 24, zIndex: 9999,
+          background: '#0F172A', color: '#fff',
+          padding: '12px 18px', borderRadius: 12,
+          fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 8,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+        }}>
+          <CheckCircle size={15} color="#14B8A6" aria-hidden />
           {toastMsg}
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Logística y Distribución</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {stats.enCamino > 0
-              ? `${stats.enCamino} envío${stats.enCamino > 1 ? 's' : ''} en camino · ${stats.kilosTotal.toFixed(0)} kg distribuidos`
-              : `${stats.total} envíos registrados · ${stats.kilosTotal.toFixed(0)} kg distribuidos`}
-          </p>
+      {/* Hero header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #F0FDFA, #F8FAFC, #EFF6FF)',
+        border: '1px solid #E2E8F0', borderRadius: 16,
+        padding: '24px 28px', marginBottom: 24,
+        position: 'relative', overflow: 'hidden',
+        animation: 'log-fade 0.3s ease both',
+      }}>
+        {[
+          { w: 120, h: 120, top: -30, right: 60,  opacity: 0.07 },
+          { w: 80,  h: 80,  top: 20,  right: 20,  opacity: 0.05 },
+          { w: 50,  h: 50,  top: 60,  right: 160, opacity: 0.06 },
+        ].map((b, i) => (
+          <div key={i} aria-hidden style={{
+            position: 'absolute', top: b.top, right: b.right,
+            width: b.w, height: b.h, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #14B8A6, #06B6D4)',
+            opacity: b.opacity, pointerEvents: 'none',
+          }} />
+        ))}
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+              background: 'linear-gradient(135deg, #14B8A6, #06B6D4)',
+              boxShadow: '0 4px 14px rgba(20,184,166,0.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Truck size={22} color="#fff" aria-hidden />
+            </div>
+            <div>
+              <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                Logística y Distribución
+              </h1>
+              <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0' }}>
+                {stats.enCamino > 0
+                  ? `${stats.enCamino} envío${stats.enCamino > 1 ? 's' : ''} en camino · ${stats.kilosTotal.toFixed(0)} kg distribuidos`
+                  : `${stats.total} envíos registrados · ${stats.kilosTotal.toFixed(0)} kg distribuidos`}
+              </p>
+            </div>
+          </div>
+          <button className="log-btn-primary" onClick={() => setMostrarModal(true)}>
+            <Plus size={15} aria-hidden /> Nuevo envío
+          </button>
         </div>
-        <button onClick={() => setMostrarModal(true)}
-          className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-sm">
-          <Plus size={16} />
-          Nuevo envío
-        </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard icon={Clock}       label="Preparados"  value={stats.preparado} color="bg-yellow-400" sub={`${stats.cancelado} cancelado${stats.cancelado !== 1 ? 's' : ''}`} />
-        <StatCard icon={Truck}       label="En camino"   value={stats.enCamino}  color="bg-blue-500"   />
-        <StatCard icon={CheckCircle} label="Entregados"  value={stats.entregado} color="bg-green-500"  sub={`${stats.total} total`} />
-        <StatCard icon={Package}     label="Kilos total" value={stats.kilosTotal.toFixed(0)} color="bg-teal-600" sub="kg distribuidos" />
+      {/* KPI cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
+        {kpiCards.map(({ icon: Icon, label, value, sub, bg, color, border, iconBg }, idx) => (
+          <div
+            key={label}
+            className="log-card"
+            style={{
+              background: bg, border: `1px solid ${border}`,
+              borderRadius: 14, padding: '16px 18px',
+              animationDelay: `${idx * 0.05}s`,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{label}</p>
+              <div style={{
+                width: 30, height: 30, borderRadius: 8,
+                background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Icon size={14} color="#fff" aria-hidden />
+              </div>
+            </div>
+            <p style={{ fontSize: 26, fontWeight: 900, color, margin: 0, lineHeight: 1 }}>{value}</p>
+            {sub && <p style={{ fontSize: 11, color: '#64748B', margin: '6px 0 0' }}>{sub}</p>}
+          </div>
+        ))}
       </div>
 
       {/* Búsqueda y filtros */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
-              placeholder="Buscar por guía, ciudad, cliente, punto de venta, lote..."
-              className="w-full pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-teal-500"
+      <div style={{
+        background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14,
+        padding: '14px 18px', marginBottom: 16,
+      }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Búsqueda */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
+            <Search size={14} color="#94A3B8" aria-hidden style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              className="log-input"
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar por guía, ciudad, cliente, lote..."
+              style={{ ...inputBase, paddingLeft: 36, paddingRight: busqueda ? 32 : 12 }}
             />
             {busqueda && (
-              <button onClick={() => setBusqueda('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <X size={14} />
+              <button
+                onClick={() => setBusqueda('')}
+                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+              >
+                <X size={13} aria-hidden />
               </button>
             )}
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {['TODOS', 'PREPARADO', 'EN_CAMINO', 'ENTREGADO', 'CANCELADO'].map(e => (
-              <button key={e} onClick={() => setFiltroEstado(e)}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
-                  filtroEstado === e
-                    ? 'bg-teal-600 text-white border-teal-600'
-                    : 'border-gray-200 text-gray-500 hover:border-teal-200'
-                }`}>
-                {e === 'TODOS' ? 'Todos' : ESTADO_CONFIG[e]?.label}
-                {e !== 'TODOS' && (
-                  <span className="ml-1 opacity-70">
-                    {envios.filter(x => x.estado === e).length}
-                  </span>
-                )}
-              </button>
-            ))}
+          {/* Filtros de estado */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {['TODOS', 'PREPARADO', 'EN_CAMINO', 'ENTREGADO', 'CANCELADO'].map(e => {
+              const activo = filtroEstado === e
+              const cfg = ESTADO_CONFIG[e]
+              return (
+                <button
+                  key={e}
+                  onClick={() => setFiltroEstado(e)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                    border: `1.5px solid ${activo ? '#14B8A6' : '#F1F5F9'}`,
+                    background: activo ? 'linear-gradient(135deg, #14B8A6, #06B6D4)' : '#FAFBFC',
+                    color: activo ? '#fff' : '#64748B',
+                    cursor: 'pointer', transition: 'all 0.18s ease',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    boxShadow: activo ? '0 2px 8px rgba(20,184,166,0.25)' : 'none',
+                  }}
+                >
+                  {e !== 'TODOS' && cfg && (
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: activo ? 'rgba(255,255,255,0.7)' : cfg.dot, flexShrink: 0 }} />
+                  )}
+                  {e === 'TODOS' ? 'Todos' : cfg?.label}
+                  {e !== 'TODOS' && (
+                    <span style={{ opacity: 0.7, marginLeft: 2 }}>
+                      {envios.filter(x => x.estado === e).length}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* Lista de envíos */}
+      <div style={{ background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14, overflow: 'hidden' }}>
         {loading ? (
-          <div className="flex items-center justify-center h-48 gap-3">
-            <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-400">Cargando envíos...</span>
+          <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 0' }}>
+                <div className="log-skeleton" style={{ width: 60, height: 20 }} />
+                <div style={{ flex: 1 }}>
+                  <div className="log-skeleton" style={{ width: '50%', height: 13, marginBottom: 6 }} />
+                  <div className="log-skeleton" style={{ width: '30%', height: 11 }} />
+                </div>
+                <div className="log-skeleton" style={{ width: 70, height: 22, borderRadius: 999 }} />
+                <div className="log-skeleton" style={{ width: 28, height: 28, borderRadius: 8 }} />
+              </div>
+            ))}
           </div>
         ) : enviosFiltrados.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 gap-2">
-            <Truck size={36} className="text-gray-200" />
-            <p className="text-sm text-gray-400 font-medium">
-              {envios.length === 0 ? 'No hay envíos registrados.' : 'Sin resultados para la búsqueda.'}
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', padding: '60px 20px', gap: 12,
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 16,
+              background: 'linear-gradient(135deg, #CCFBF1, #A5F3FC)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Truck size={24} color="#14B8A6" aria-hidden />
+            </div>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: 0 }}>
+              {envios.length === 0 ? 'No hay envíos registrados' : 'Sin resultados para la búsqueda'}
             </p>
+            <p style={{ fontSize: 13, color: '#94A3B8', margin: 0 }}>
+              {envios.length === 0 ? 'Crea el primer envío para comenzar la distribución' : 'Prueba con otros términos o filtros'}
+            </p>
+            {envios.length === 0 && (
+              <button className="log-btn-primary" onClick={() => setMostrarModal(true)}>
+                <Plus size={14} aria-hidden /> Nuevo envío
+              </button>
+            )}
           </div>
         ) : (
           <>
-            {/* Header tabla */}
-            <div className="hidden md:grid grid-cols-12 gap-3 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wide">
-              <div className="col-span-2">Guía</div>
-              <div className="col-span-3">Destino</div>
-              <div className="col-span-2">Fecha</div>
-              <div className="col-span-2">Transporte</div>
-              <div className="col-span-1">Kilos</div>
-              <div className="col-span-1">Estado</div>
-              <div className="col-span-1 text-right">Acción</div>
+            {/* Header tabla — solo desktop */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '110px 1fr 140px 130px 80px 110px 80px',
+              gap: 12, padding: '10px 18px',
+              background: '#FAFBFC', borderBottom: '1px solid #F1F5F9',
+            }} className="hidden md:grid">
+              {['Guía', 'Destino', 'Fecha', 'Transporte', 'Kilos', 'Estado', 'Acción'].map(h => (
+                <p key={h} style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, textAlign: h === 'Kilos' || h === 'Acción' ? 'right' : 'left' }}>
+                  {h}
+                </p>
+              ))}
             </div>
 
-            <div className="divide-y divide-gray-50">
-              {enviosFiltrados.map(envio => (
-                <div key={envio.idEnvio}
-                  className="grid grid-cols-12 gap-3 px-5 py-4 hover:bg-gray-50/70 transition-colors items-center cursor-pointer"
-                  onClick={() => setEnvioDetalle(envio)}>
-
-                  {/* Guía */}
-                  <div className="col-span-12 md:col-span-2">
-                    <span className="font-mono text-xs font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
-                      {envio.codigoGuia || `#${envio.idEnvio}`}
-                    </span>
-                  </div>
-
-                  {/* Destino */}
-                  <div className="col-span-12 md:col-span-3">
-                    <p className="text-sm font-semibold text-gray-800 leading-tight">
-                      {envio.tipoDestino === 'CLIENTE'
-                        ? (envio.nombreCliente || '—')
-                        : (envio.nombrePunto   || '—')}
-                    </p>
-                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                      <MapPin size={10} className="shrink-0" />
-                      {envio.destinoCiudad}
-                      <span className="ml-1 opacity-60">
-                        {envio.tipoDestino === 'CLIENTE' ? '· Cliente' : '· Punto de venta'}
+            <div>
+              {enviosFiltrados.map((envio, idx) => {
+                const cfg = ESTADO_CONFIG[envio.estado] || ESTADO_CONFIG.PREPARADO
+                return (
+                  <div
+                    key={envio.idEnvio}
+                    className="log-row log-card"
+                    onClick={() => setEnvioDetalle(envio)}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '110px 1fr 140px 130px 80px 110px 80px',
+                      gap: 12, padding: '14px 18px',
+                      borderBottom: '1px solid #F8FAFC',
+                      alignItems: 'center',
+                      animationDelay: `${idx * 0.03}s`,
+                    }}
+                  >
+                    {/* Guía */}
+                    <div>
+                      <span style={{
+                        fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+                        background: '#F1F5F9', color: '#64748B',
+                        padding: '3px 7px', borderRadius: 6,
+                      }}>
+                        {envio.codigoGuia || `#${envio.idEnvio}`}
                       </span>
-                    </p>
-                  </div>
+                    </div>
 
-                  {/* Fecha */}
-                  <div className="col-span-6 md:col-span-2">
-                    <p className="text-xs text-gray-700">{fmt(envio.fechaPreparacion || envio.fechaEnvio)}</p>
-                    {envio.fechaEntregaEstimada && (
-                      <p className="text-xs text-gray-400">Est: {fmtDate(envio.fechaEntregaEstimada)}</p>
-                    )}
-                  </div>
+                    {/* Destino */}
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {envio.tipoDestino === 'CLIENTE' ? (envio.nombreCliente || '—') : (envio.nombrePunto || '—')}
+                      </p>
+                      <p style={{ fontSize: 11, color: '#94A3B8', margin: '3px 0 0', display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <MapPin size={9} aria-hidden />
+                        {envio.destinoCiudad}
+                        <span style={{ marginLeft: 3, opacity: 0.7 }}>
+                          {envio.tipoDestino === 'CLIENTE' ? '· Cliente' : '· Punto de venta'}
+                        </span>
+                      </p>
+                    </div>
 
-                  {/* Transporte */}
-                  <div className="col-span-6 md:col-span-2">
-                    {envio.nombreConductor ? (
-                      <>
-                        <p className="text-xs font-medium text-gray-700 truncate">{envio.nombreConductor}</p>
-                        {envio.placaVehiculo && (
-                          <p className="text-xs text-gray-400 font-mono">{envio.placaVehiculo}</p>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-xs text-gray-300">Sin asignar</span>
-                    )}
-                  </div>
+                    {/* Fecha */}
+                    <div>
+                      <p style={{ fontSize: 12, color: '#0F172A', margin: 0 }}>{fmt(envio.fechaPreparacion || envio.fechaEnvio)}</p>
+                      {envio.fechaEntregaEstimada && (
+                        <p style={{ fontSize: 10, color: '#94A3B8', margin: '2px 0 0' }}>Est: {fmtDate(envio.fechaEntregaEstimada)}</p>
+                      )}
+                    </div>
 
-                  {/* Kilos */}
-                  <div className="col-span-4 md:col-span-1">
-                    <p className="text-sm font-bold text-teal-700">
-                      {parseFloat(envio.totalKilos || 0).toFixed(1)}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {envio.totalLotes} lote{envio.totalLotes !== 1 ? 's' : ''}
-                    </p>
-                  </div>
+                    {/* Transporte */}
+                    <div style={{ minWidth: 0 }}>
+                      {envio.nombreConductor ? (
+                        <>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: '#0F172A', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{envio.nombreConductor}</p>
+                          {envio.placaVehiculo && (
+                            <p style={{ fontFamily: 'monospace', fontSize: 10, color: '#94A3B8', margin: '2px 0 0' }}>{envio.placaVehiculo}</p>
+                          )}
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#CBD5E1' }}>Sin asignar</span>
+                      )}
+                    </div>
 
-                  {/* Estado */}
-                  <div className="col-span-5 md:col-span-1">
-                    <Badge estado={envio.estado} />
-                  </div>
+                    {/* Kilos */}
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: 14, fontWeight: 900, color: '#14B8A6', margin: 0 }}>
+                        {parseFloat(envio.totalKilos || 0).toFixed(1)}
+                      </p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', margin: '2px 0 0' }}>
+                        {envio.totalLotes} lote{envio.totalLotes !== 1 ? 's' : ''}
+                      </p>
+                    </div>
 
-                  {/* Acción */}
-                  <div className="col-span-3 md:col-span-1 flex justify-end gap-1"
-                    onClick={e => e.stopPropagation()}>
-                    {SIGUIENTE_ESTADO[envio.estado] && (
+                    {/* Estado */}
+                    <div>
+                      <Badge estado={envio.estado} />
+                    </div>
+
+                    {/* Acciones */}
+                    <div
+                      style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {SIGUIENTE_ESTADO[envio.estado] && (
+                        <button
+                          onClick={() => handleAvanzarEstado(envio)}
+                          disabled={avanzando === envio.idEnvio}
+                          title={SIGUIENTE_LABEL[envio.estado]}
+                          style={{
+                            width: 30, height: 30, borderRadius: 8, border: 'none',
+                            background: '#F0FDFA', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#14B8A6', transition: 'all 0.2s ease',
+                            opacity: avanzando === envio.idEnvio ? 0.5 : 1,
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#CCFBF1' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#F0FDFA' }}
+                        >
+                          {avanzando === envio.idEnvio
+                            ? <span style={{ width: 12, height: 12, border: '2px solid #14B8A6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'block' }} />
+                            : <ArrowRight size={13} aria-hidden />
+                          }
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleAvanzarEstado(envio)}
-                        disabled={avanzando === envio.idEnvio}
-                        className="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-600 transition-colors disabled:opacity-50"
-                        title={SIGUIENTE_LABEL[envio.estado]}>
-                        {avanzando === envio.idEnvio
-                          ? <span className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin block" />
-                          : <ArrowRight size={15} />}
+                        onClick={() => setEnvioDetalle(envio)}
+                        title="Ver detalle"
+                        style={{
+                          width: 30, height: 30, borderRadius: 8, border: '1.5px solid #F1F5F9',
+                          background: '#FAFBFC', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: '#94A3B8', transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#14B8A6'; e.currentTarget.style.color = '#14B8A6' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#F1F5F9'; e.currentTarget.style.color = '#94A3B8' }}
+                      >
+                        <ChevronRight size={13} aria-hidden />
                       </button>
-                    )}
-                    <button onClick={() => setEnvioDetalle(envio)}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
-                      title="Ver detalle">
-                      <ChevronRight size={15} />
-                    </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
@@ -1068,6 +1411,18 @@ export default function Logistica() {
           avanzando={avanzando}
         />
       )}
+    </div>
+  )
+}
+
+// ── Auxiliares ─────────────────────────────────────────────────
+function ModalField({ label, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {label}
+      </label>
+      {children}
     </div>
   )
 }

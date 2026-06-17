@@ -31,9 +31,11 @@ html:has(body.contraste-inv) #a11y-widget {
 
 /* Nivel 2: Oscuro — sin filter, usa colores */
 body.contraste-oscuro {
-  background-color: #0a0a0a !important;
-  color: #ffffff !important;
+  background-color: #0D1117 !important;
+  color: #E2E8F0 !important;
 }
+
+/* ── Texto ── */
 body.contraste-oscuro p,
 body.contraste-oscuro span,
 body.contraste-oscuro h1,
@@ -45,24 +47,202 @@ body.contraste-oscuro label,
 body.contraste-oscuro td,
 body.contraste-oscuro th,
 body.contraste-oscuro li {
-  color: #ffffff !important;
+  color: #E2E8F0 !important;
 }
+
+/* ── Clases Tailwind ── */
 body.contraste-oscuro .bg-white,
 body.contraste-oscuro [class*="bg-gray"],
-body.contraste-oscuro [class*="bg-slate"] {
-  background-color: #1a1a1a !important;
+body.contraste-oscuro [class*="bg-slate"],
+body.contraste-oscuro [class*="bg-teal"],
+body.contraste-oscuro [class*="bg-amber"],
+body.contraste-oscuro [class*="bg-yellow"] {
+  background-color: #1E2533 !important;
 }
-body.contraste-oscuro nav,
-body.contraste-oscuro aside,
-body.contraste-oscuro header,
-body.contraste-oscuro main {
-  background-color: #0f0f0f !important;
-}
-body.contraste-oscuro a    { color: #4ade80  !important; }
-body.contraste-oscuro button { color: #ffffff !important; }
 
-/* Páginas de auth (fondo oscuro inline) en modo oscuro:
-   intensificar el oscurecimiento y hacer el texto más visible */
+/* ── Contenedores estructurales:
+      sidebar (#0F172A) y header ya son oscuros — NO tocarlos.
+      Solo el main (área de contenido) recibe un gris oscuro suave. ── */
+body.contraste-oscuro main {
+  background-color: #0D1117 !important;
+}
+
+/* ── Links y botones ── */
+body.contraste-oscuro a { color: #5EEAD4 !important; }
+body.contraste-oscuro button { color: #E2E8F0 !important; }
+
+/* ── Cards con inline style background blanco/claro (módulos rediseñados) ──
+   Cubre todas las variantes que usan los módulos con inline styles          */
+body.contraste-oscuro [style*="background:#fff"],
+body.contraste-oscuro [style*="background: #fff"],
+body.contraste-oscuro [style*="background:#ffffff"],
+body.contraste-oscuro [style*="background: #ffffff"],
+body.contraste-oscuro [style*="background: #FFFFFF"],
+body.contraste-oscuro [style*="background:#FFFFFF"] {
+  background-color: #1E2533 !important;
+}
+
+/* ── Fondos de hero/gradientes claros de los módulos rediseñados ── */
+body.contraste-oscuro [style*="background:linear-gradient(135deg, #F0FDFA"],
+body.contraste-oscuro [style*="background: linear-gradient(135deg, #F0FDFA"],
+body.contraste-oscuro [style*="background:linear-gradient(135deg, #FFFBEB"],
+body.contraste-oscuro [style*="background: linear-gradient(135deg, #FFFBEB"],
+body.contraste-oscuro [style*="background:linear-gradient(135deg, #FFF7ED"],
+body.contraste-oscuro [style*="background: linear-gradient(135deg, #FFF7ED"],
+body.contraste-oscuro [style*="background:linear-gradient(135deg, #EFF6FF"],
+body.contraste-oscuro [style*="background: linear-gradient(135deg, #EFF6FF"],
+body.contraste-oscuro [style*="background:linear-gradient(135deg, #F0FDF4"],
+body.contraste-oscuro [style*="background: linear-gradient(135deg, #F0FDF4"],
+body.contraste-oscuro [style*="background:linear-gradient(135deg, #CCFBF1"],
+body.contraste-oscuro [style*="background: linear-gradient(135deg, #CCFBF1"],
+body.contraste-oscuro [style*="background:linear-gradient(90deg, #E2E8F0"],
+body.contraste-oscuro [style*="background: linear-gradient(90deg, #E2E8F0"],
+body.contraste-oscuro [style*="background:linear-gradient(135deg,#F0FDFA"],
+body.contraste-oscuro [style*="background: linear-gradient(135deg,#F0FDFA"],
+body.contraste-oscuro [style*="background:linear-gradient(135deg,#CCFBF1"],
+body.contraste-oscuro [style*="background: linear-gradient(135deg,#CCFBF1"],
+body.contraste-oscuro [style*="background:linear-gradient(135deg, rgba(20,184,166"],
+body.contraste-oscuro [style*="background: linear-gradient(135deg, rgba(20,184,166"] {
+  background: #161B27 !important;
+  background-color: #161B27 !important;
+}
+
+/* ── Fondos de KPI cards y paneles de información ── */
+body.contraste-oscuro [style*="background:#F0FDFA"],
+body.contraste-oscuro [style*="background: #F0FDFA"],
+body.contraste-oscuro [style*="background:#FFFBEB"],
+body.contraste-oscuro [style*="background: #FFFBEB"],
+body.contraste-oscuro [style*="background:#FFF7ED"],
+body.contraste-oscuro [style*="background: #FFF7ED"],
+body.contraste-oscuro [style*="background:#EFF6FF"],
+body.contraste-oscuro [style*="background: #EFF6FF"],
+body.contraste-oscuro [style*="background:#F8FAFC"],
+body.contraste-oscuro [style*="background: #F8FAFC"],
+body.contraste-oscuro [style*="background:#FAFAFA"],
+body.contraste-oscuro [style*="background: #FAFAFA"],
+body.contraste-oscuro [style*="background:#FAFBFC"],
+body.contraste-oscuro [style*="background: #FAFBFC"],
+body.contraste-oscuro [style*="background:#F1F5F9"],
+body.contraste-oscuro [style*="background: #F1F5F9"],
+body.contraste-oscuro [style*="background:#FEF2F2"],
+body.contraste-oscuro [style*="background: #FEF2F2"],
+body.contraste-oscuro [style*="background:#FFF1F2"],
+body.contraste-oscuro [style*="background: #FFF1F2"],
+body.contraste-oscuro [style*="background:#D1FAE5"],
+body.contraste-oscuro [style*="background: #D1FAE5"],
+body.contraste-oscuro [style*="background:#CCFBF1"],
+body.contraste-oscuro [style*="background: #CCFBF1"],
+body.contraste-oscuro [style*="background:#DBEAFE"],
+body.contraste-oscuro [style*="background: #DBEAFE"],
+body.contraste-oscuro [style*="background:#FEE2E2"],
+body.contraste-oscuro [style*="background: #FEE2E2"],
+body.contraste-oscuro [style*="background:#FEF3C7"],
+body.contraste-oscuro [style*="background: #FEF3C7"],
+body.contraste-oscuro [style*="background:#F0FDF4"],
+body.contraste-oscuro [style*="background: #F0FDF4"],
+body.contraste-oscuro [style*="background:#ECFDF5"],
+body.contraste-oscuro [style*="background: #ECFDF5"],
+body.contraste-oscuro [style*="background:#E0F2FE"],
+body.contraste-oscuro [style*="background: #E0F2FE"],
+body.contraste-oscuro [style*="background:#FDF4FF"],
+body.contraste-oscuro [style*="background: #FDF4FF"] {
+  background-color: #1E2533 !important;
+}
+
+/* ── rgba blancos/claros semi-transparentes → versión oscura ── */
+body.contraste-oscuro [style*="background:rgba(255,255,255"],
+body.contraste-oscuro [style*="background: rgba(255,255,255"] {
+  background-color: rgba(255,255,255,0.05) !important;
+}
+
+/* ── Textos con colores claros inline que se pierden en fondo oscuro ── */
+body.contraste-oscuro [style*="color:#0F172A"],
+body.contraste-oscuro [style*="color: #0F172A"],
+body.contraste-oscuro [style*="color:#1E293B"],
+body.contraste-oscuro [style*="color: #1E293B"],
+body.contraste-oscuro [style*="color:#374151"],
+body.contraste-oscuro [style*="color: #374151"],
+body.contraste-oscuro [style*="color:#475569"],
+body.contraste-oscuro [style*="color: #475569"] {
+  color: #E2E8F0 !important;
+}
+body.contraste-oscuro [style*="color:#64748B"],
+body.contraste-oscuro [style*="color: #64748B"] {
+  color: #94A3B8 !important;
+}
+body.contraste-oscuro [style*="color:#94A3B8"],
+body.contraste-oscuro [style*="color: #94A3B8"],
+body.contraste-oscuro [style*="color:#CBD5E1"],
+body.contraste-oscuro [style*="color: #CBD5E1"],
+body.contraste-oscuro [style*="color:#9CA3AF"],
+body.contraste-oscuro [style*="color: #9CA3AF"] {
+  color: #64748B !important;
+}
+
+/* ── Bordes inline → versión oscura ── */
+body.contraste-oscuro [style*="border:1px solid #F1F5F9"],
+body.contraste-oscuro [style*="border: 1px solid #F1F5F9"],
+body.contraste-oscuro [style*="border:1px solid #E2E8F0"],
+body.contraste-oscuro [style*="border: 1px solid #E2E8F0"],
+body.contraste-oscuro [style*="borderColor:#F1F5F9"],
+body.contraste-oscuro [style*="border-color:#F1F5F9"] {
+  border-color: #2D3748 !important;
+}
+
+/* ── Bordes de cards de alertas — ámbar, rojo, teal — se aclaran un poco ── */
+body.contraste-oscuro [style*="border:1px solid #FED7AA"],
+body.contraste-oscuro [style*="border: 1px solid #FED7AA"] {
+  border-color: #78350F !important;
+}
+body.contraste-oscuro [style*="border:1px solid #FECACA"],
+body.contraste-oscuro [style*="border: 1px solid #FECACA"],
+body.contraste-oscuro [style*="border:1px solid #FECDD3"],
+body.contraste-oscuro [style*="border: 1px solid #FECDD3"] {
+  border-color: #7F1D1D !important;
+}
+body.contraste-oscuro [style*="border:1px solid #99F6E4"],
+body.contraste-oscuro [style*="border: 1px solid #99F6E4"],
+body.contraste-oscuro [style*="border:1px solid #CCFBF1"],
+body.contraste-oscuro [style*="border: 1px solid #CCFBF1"] {
+  border-color: #134E4A !important;
+}
+
+/* ── Skeletons: el color base ya está hardcodeado en #F1F5F9 ── */
+body.contraste-oscuro .rec-skel,
+body.contraste-oscuro .alm-skel,
+body.contraste-oscuro .proc-skel,
+body.contraste-oscuro .dp-skel,
+body.contraste-oscuro .cal-skel,
+body.contraste-oscuro .prod-skel,
+body.contraste-oscuro .pr-skel,
+body.contraste-oscuro .cal-skel {
+  background: #2D3748 !important;
+}
+
+/* ── Contenedores de barras de progreso (track gris claro) ── */
+body.contraste-oscuro [style*="background:#F1F5F9"][style*="borderRadius:999"],
+body.contraste-oscuro [style*="background: #F1F5F9"][style*="border-radius:999"] {
+  background-color: #2D3748 !important;
+}
+
+/* ── El sidebar (#0F172A) NO se toca — ya es oscuro por diseño.
+      Solo lo intensificamos levemente para mejor contraste. ── */
+body.contraste-oscuro aside {
+  background-color: #080C14 !important;
+  border-color: rgba(255,255,255,0.04) !important;
+}
+
+/* ── Header del sistema ── */
+body.contraste-oscuro header {
+  background-color: #0D1117 !important;
+  border-color: #1E2533 !important;
+}
+body.contraste-oscuro header p,
+body.contraste-oscuro header span {
+  color: #CBD5E1 !important;
+}
+
+/* ── Páginas de auth (fondo oscuro inline) en modo oscuro ── */
 body.contraste-oscuro [style*="background:#0F172A"],
 body.contraste-oscuro [style*="background: #0F172A"],
 body.contraste-oscuro [style*="background:'#0F172A'"] {
@@ -104,6 +284,46 @@ body.contraste-luz *:not(#a11y-widget):not(#a11y-widget *):not(#a11y-panel):not(
   background-color: transparent !important;
   color: #1e293b !important;
   border-color: #cbd5e1 !important;
+}
+
+/* ── Modo LUZ: textos con colores de acento/estado que deben mantenerse legibles ── */
+body.contraste-luz [style*="color:#14B8A6"],
+body.contraste-luz [style*="color: #14B8A6"],
+body.contraste-luz [style*="color:#06B6D4"],
+body.contraste-luz [style*="color: #06B6D4"],
+body.contraste-luz [style*="color:#0D9488"],
+body.contraste-luz [style*="color: #0D9488"],
+body.contraste-luz [style*="color:#0F766E"],
+body.contraste-luz [style*="color: #0F766E"] {
+  color: #0d6e68 !important;
+}
+body.contraste-luz [style*="color:#10B981"],
+body.contraste-luz [style*="color: #10B981"],
+body.contraste-luz [style*="color:#166534"],
+body.contraste-luz [style*="color: #166534"] {
+  color: #14532d !important;
+}
+body.contraste-luz [style*="color:#EF4444"],
+body.contraste-luz [style*="color: #EF4444"],
+body.contraste-luz [style*="color:#B91C1C"],
+body.contraste-luz [style*="color: #B91C1C"],
+body.contraste-luz [style*="color:#991B1B"],
+body.contraste-luz [style*="color: #991B1B"] {
+  color: #7f1d1d !important;
+}
+body.contraste-luz [style*="color:#F59E0B"],
+body.contraste-luz [style*="color: #F59E0B"],
+body.contraste-luz [style*="color:#B45309"],
+body.contraste-luz [style*="color: #B45309"],
+body.contraste-luz [style*="color:#92400E"],
+body.contraste-luz [style*="color: #92400E"] {
+  color: #78350f !important;
+}
+body.contraste-luz [style*="color:#3B82F6"],
+body.contraste-luz [style*="color: #3B82F6"],
+body.contraste-luz [style*="color:#1D4ED8"],
+body.contraste-luz [style*="color: #1D4ED8"] {
+  color: #1e3a8a !important;
 }
 
 /* El body y los contenedores raíz sí tienen fondo blanco */
@@ -155,31 +375,28 @@ body.contraste-luz #a11y-panel * {
   border-color: revert !important;
 }
 
-/* ── Modo OSCURO en páginas auth ── */
-body.contraste-oscuro [style*="background:#0F172A"],
-body.contraste-oscuro [style*="background: #0F172A"],
+/* ── Modo OSCURO en páginas auth — overlays rgba ── */
 body.contraste-oscuro [style*="background:rgba(15,23,42"],
 body.contraste-oscuro [style*="background: rgba(15,23,42"] {
-  background-color: #000000 !important;
+  background-color: rgba(0,0,0,0.75) !important;
 }
 body.contraste-oscuro [style*="background:rgba(17,24,39"],
 body.contraste-oscuro [style*="background: rgba(17,24,39"] {
   background-color: #0a0a0a !important;
 }
-body.contraste-oscuro [style*="color:#F8FAFC"],
-body.contraste-oscuro [style*="color: #F8FAFC"],
-body.contraste-oscuro [style*="color:#94A3B8"],
-body.contraste-oscuro [style*="color:#64748B"] {
-  color: #ffffff !important;
-}
+
+/* ── Inputs, selects y textareas ── */
 body.contraste-oscuro input,
 body.contraste-oscuro select,
 body.contraste-oscuro textarea {
-  background-color: #1a1a1a !important;
-  color: #ffffff !important;
-  border-color: #374151 !important;
+  background-color: #161B27 !important;
+  color: #E2E8F0 !important;
+  border-color: #2D3748 !important;
 }
-body.contraste-oscuro input::placeholder { color: #9ca3af !important; }
+body.contraste-oscuro input::placeholder,
+body.contraste-oscuro textarea::placeholder {
+  color: #4A5568 !important;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    TEXTO — dos estrategias combinadas:

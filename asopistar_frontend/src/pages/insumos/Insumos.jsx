@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Package, ShoppingCart, ArrowUpDown, BarChart2,
   Plus, Edit2, XCircle, AlertTriangle, CheckCircle,
-  Search, RefreshCw, X, ChevronDown, ArrowUp, ArrowDown
+  Search, RefreshCw, X, ChevronDown, ArrowUp, ArrowDown,
+  Fish, TrendingUp, DollarSign, Boxes
 } from 'lucide-react'
 import {
   getInsumos, createInsumo, updateInsumo, desactivarInsumo,
@@ -12,56 +13,62 @@ import {
   getProductoresActivos
 } from '../../services/insumoService'
 
-// ── Constantes ────────────────────────────────────────────────
+// ── Constantes ─────────────────────────────────────────────────
 const TABS = [
-  { id: 'inventario',   label: 'Inventario',   icon: Package },
-  { id: 'ventas',       label: 'Ventas',       icon: ShoppingCart },
-  { id: 'movimientos',  label: 'Movimientos',  icon: ArrowUpDown },
-  { id: 'reportes',     label: 'Reportes',     icon: BarChart2 },
+  { id: 'inventario',  label: 'Inventario',  icon: Package },
+  { id: 'ventas',      label: 'Ventas',      icon: ShoppingCart },
+  { id: 'movimientos', label: 'Movimientos', icon: ArrowUpDown },
+  { id: 'reportes',    label: 'Reportes',    icon: BarChart2 },
 ]
 
 const TIPO_COLORS = {
-  ALEVINO:     'bg-teal-100 text-teal-800',
-  CONCENTRADO: 'bg-amber-100 text-amber-800',
-  OTRO:        'bg-gray-100 text-gray-700',
+  ALEVINO:     { bg: '#CCFBF1', color: '#0F766E', label: 'Alevino' },
+  CONCENTRADO: { bg: '#FEF3C7', color: '#92400E', label: 'Concentrado' },
+  OTRO:        { bg: '#F1F5F9', color: '#475569', label: 'Otro' },
 }
 
-const ESTADO_PAGO_COLORS = {
-  PAGADO:    'bg-green-100 text-green-800',
-  PENDIENTE: 'bg-yellow-100 text-yellow-800',
-  CREDITO:   'bg-blue-100 text-blue-800',
+const ESTADO_PAGO = {
+  PAGADO:    { bg: '#D1FAE5', color: '#065F46' },
+  PENDIENTE: { bg: '#FEF3C7', color: '#92400E' },
+  CREDITO:   { bg: '#DBEAFE', color: '#1E40AF' },
 }
 
-const MOV_COLORS = {
-  ENTRADA: 'bg-green-100 text-green-800',
-  SALIDA:  'bg-red-100 text-red-800',
-  AJUSTE:  'bg-purple-100 text-purple-800',
+const MOV_STYLE = {
+  ENTRADA: { bg: '#D1FAE5', color: '#065F46', icon: ArrowDown },
+  SALIDA:  { bg: '#FEE2E2', color: '#991B1B', icon: ArrowUp   },
+  AJUSTE:  { bg: '#EDE9FE', color: '#5B21B6', icon: ArrowUpDown },
 }
 
-// ── Rol del usuario ───────────────────────────────────────────
-// El productor solo puede VER insumos — no crear, editar, vender ni mover.
-// Tabs visibles para el productor: inventario y reportes (solo lectura).
 const TABS_PRODUCTOR = ['inventario']
 
-// ── Componente principal ──────────────────────────────────────
+// ── Estilos reutilizables ──────────────────────────────────────
+const inputBase = {
+  width: '100%',
+  fontSize: 13,
+  border: '1.5px solid #E2E8F0',
+  borderRadius: 9,
+  padding: '8px 12px',
+  background: '#FAFAFA',
+  color: '#0F172A',
+  outline: 'none',
+  transition: 'all 0.2s ease',
+}
+
+// ── Componente principal ───────────────────────────────────────
 export default function Insumos() {
-  // ── Identidad del usuario ───────────────────────────────────
   const rol         = localStorage.getItem('rol') || ''
   const esProductor = rol === 'ROLE_PRODUCTOR'
   const esContadora = rol === 'ROLE_CONTADORA'
-  // La contadora solo puede ver — no crear, editar, vender ni mover
   const soloLectura = esProductor || esContadora
 
-  const [tab, setTab]               = useState('inventario')
-  const [insumos, setInsumos]       = useState([])
-  const [ventas, setVentas]         = useState([])
-  const [movimientos, setMovimientos] = useState([])
-  const [productores, setProductores] = useState([])
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState(null)
-  const [busqueda, setBusqueda]     = useState('')
-
-  // Modales (solo roles con permisos de escritura)
+  const [tab, setTab]                     = useState('inventario')
+  const [insumos, setInsumos]             = useState([])
+  const [ventas, setVentas]               = useState([])
+  const [movimientos, setMovimientos]     = useState([])
+  const [productores, setProductores]     = useState([])
+  const [loading, setLoading]             = useState(false)
+  const [error, setError]                 = useState(null)
+  const [busqueda, setBusqueda]           = useState('')
   const [modalInsumo, setModalInsumo]     = useState(null)
   const [modalVenta, setModalVenta]       = useState(false)
   const [modalMovimiento, setModalMovimiento] = useState(false)
@@ -74,14 +81,12 @@ export default function Insumos() {
     setError(null)
     try {
       if (esProductor) {
-        // ── PRODUCTOR: solo carga insumos ───────────────────────────────
         const ins = await getInsumos()
         setInsumos(ins.data)
         setVentas([])
         setMovimientos([])
         setProductores([])
       } else if (esContadora) {
-        // ── CONTADORA: carga insumos, ventas y movimientos (solo lectura)
         const [ins, vts, movs] = await Promise.all([
           getInsumos(), getVentas(), getMovimientos()
         ])
@@ -90,12 +95,8 @@ export default function Insumos() {
         setMovimientos(movs.data)
         setProductores([])
       } else {
-        // ── Resto de roles: carga todo en paralelo ───────────────────────
         const [ins, vts, movs, prods] = await Promise.all([
-          getInsumos(),
-          getVentas(),
-          getMovimientos(),
-          getProductoresActivos(),
+          getInsumos(), getVentas(), getMovimientos(), getProductoresActivos(),
         ])
         setInsumos(ins.data)
         setVentas(vts.data)
@@ -111,46 +112,188 @@ export default function Insumos() {
 
   useEffect(() => { cargarDatos() }, [cargarDatos])
 
-  // Tabs visibles según rol
   const tabsVisibles = esProductor
     ? TABS.filter(t => TABS_PRODUCTOR.includes(t.id))
     : TABS
 
-  // Si el tab activo no está disponible para el rol, resetear a inventario
   const tabActivo = esProductor && !TABS_PRODUCTOR.includes(tab) ? 'inventario' : tab
 
-  // ── Render ────────────────────────────────────────────────
   return (
-    <div className="space-y-5">
+    <div style={{ background: '#F8FAFC', minHeight: '100%' }}>
+      <style>{`
+        @keyframes ins-fade {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes ins-modal-in {
+          from { opacity: 0; transform: scale(0.96); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes ins-pulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.4; }
+        }
+        .ins-card {
+          animation: ins-fade 0.22s ease both;
+          transition: all 0.2s ease;
+        }
+        .ins-card:hover {
+          border-color: rgba(20,184,166,0.35) !important;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+          transform: translateY(-2px);
+        }
+        .ins-btn-primary {
+          background: linear-gradient(135deg, #14B8A6, #06B6D4);
+          color: #fff;
+          border: none;
+          border-radius: 10px;
+          padding: 9px 18px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 8px rgba(20,184,166,0.25);
+        }
+        .ins-btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(20,184,166,0.4);
+        }
+        .ins-btn-outline {
+          background: transparent;
+          color: #64748B;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 10px;
+          padding: 9px 18px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .ins-btn-outline:hover {
+          background: #F8FAFC;
+          border-color: #CBD5E1;
+        }
+        .ins-input:focus {
+          border-color: #14B8A6 !important;
+          box-shadow: 0 0 0 3px rgba(20,184,166,0.12) !important;
+          background: #fff !important;
+        }
+        .ins-tab-btn {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 8px 16px;
+          border-radius: 9px;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          border: none;
+          transition: all 0.2s ease;
+          position: relative;
+        }
+        .ins-row:hover { background: #F8FAFC; }
+        .ins-skeleton {
+          animation: ins-pulse 1.4s ease infinite;
+          background: #F1F5F9;
+          border-radius: 6px;
+        }
+      `}</style>
 
-      {/* Cabecera */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Módulo de Insumos</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {esProductor
-              ? 'Consulta el catálogo de insumos disponibles'
-              : 'Inventario · Ventas · Movimientos · Reportes'}
-          </p>
+      {/* ── HERO HEADER ─────────────────────────────────────── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #F0FDFA, #F8FAFC, #EFF6FF)',
+        border: '1px solid #E2E8F0',
+        borderRadius: 16,
+        padding: '24px 28px',
+        marginBottom: 24,
+        position: 'relative',
+        overflow: 'hidden',
+        animation: 'ins-fade 0.3s ease both',
+      }}>
+        {/* burbujas decorativas */}
+        {[
+          { w: 120, h: 120, top: -30, right: 60, opacity: 0.07 },
+          { w: 80,  h: 80,  top: 20,  right: 20, opacity: 0.05 },
+          { w: 50,  h: 50,  top: 60,  right: 160, opacity: 0.06 },
+        ].map((b, i) => (
+          <div key={i} aria-hidden style={{
+            position: 'absolute', top: b.top, right: b.right,
+            width: b.w, height: b.h, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #14B8A6, #06B6D4)',
+            opacity: b.opacity, pointerEvents: 'none',
+          }} />
+        ))}
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+              background: 'linear-gradient(135deg, #14B8A6, #06B6D4)',
+              boxShadow: '0 4px 14px rgba(20,184,166,0.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Package size={22} color="#fff" aria-hidden />
+            </div>
+            <div>
+              <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                Módulo de Insumos
+              </h1>
+              <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0', lineHeight: 1.4 }}>
+                {esProductor
+                  ? `${insumos.filter(i => i.estado === 'ACTIVO').length} insumos disponibles para consulta`
+                  : `${insumos.length} insumos registrados · ${ventas.length} ventas · ${movimientos.length} movimientos`
+                }
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={cargarDatos}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 14px', fontSize: 13, fontWeight: 600,
+                color: '#64748B', border: '1.5px solid #E2E8F0',
+                borderRadius: 10, background: '#fff', cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden />
+              Actualizar
+            </button>
+            {!soloLectura && (
+              <button className="ins-btn-primary" onClick={() => setModalInsumo('crear')}>
+                <Plus size={15} aria-hidden /> Nuevo Insumo
+              </button>
+            )}
+          </div>
         </div>
-        <button
-          onClick={cargarDatos}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-          Actualizar
-        </button>
       </div>
 
-      {/* Alerta bajo stock — visible para todos */}
+      {/* ── ALERTA BAJO STOCK ───────────────────────────────── */}
       {bajoStock.length > 0 && (
-        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          padding: '14px 18px',
+          background: 'linear-gradient(135deg, #FFFBEB, #FFF7ED)',
+          border: '1px solid #FED7AA',
+          borderRadius: 12, marginBottom: 20,
+          animation: 'ins-fade 0.25s ease both',
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+            background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <AlertTriangle size={16} color="#D97706" aria-hidden />
+          </div>
           <div>
-            <p className="text-sm font-semibold text-amber-800">
-              {bajoStock.length} insumo{bajoStock.length > 1 ? 's' : ''} con stock bajo
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#92400E', margin: 0 }}>
+              {bajoStock.length} insumo{bajoStock.length > 1 ? 's' : ''} con stock bajo — requieren reabastecimiento
             </p>
-            <p className="text-xs text-amber-700 mt-0.5">
+            <p style={{ fontSize: 12, color: '#B45309', margin: '3px 0 0' }}>
               {bajoStock.map(i => i.nombre).join(' · ')}
             </p>
           </div>
@@ -158,36 +301,54 @@ export default function Insumos() {
       )}
 
       {error && (
-        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-          <XCircle size={16} className="shrink-0" />
-          {error}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 16px', background: '#FEF2F2',
+          border: '1px solid #FECACA', borderRadius: 12,
+          fontSize: 13, color: '#991B1B', marginBottom: 20,
+        }}>
+          <XCircle size={15} aria-hidden /> {error}
         </div>
       )}
 
-      {/* Tabs — filtradas según rol */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {tabsVisibles.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              tabActivo === id
-                ? 'bg-white text-teal-700 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Icon size={15} />
-            {label}
-            {id === 'inventario' && bajoStock.length > 0 && (
-              <span className="bg-amber-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                {bajoStock.length}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* ── TABS ────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', gap: 4,
+        background: '#F1F5F9', padding: 4, borderRadius: 12,
+        width: 'fit-content', marginBottom: 24,
+      }}>
+        {tabsVisibles.map(({ id, label, icon: Icon }) => {
+          const activo = tabActivo === id
+          return (
+            <button
+              key={id}
+              className="ins-tab-btn"
+              onClick={() => { setTab(id); setBusqueda('') }}
+              style={{
+                background: activo ? '#fff' : 'transparent',
+                color: activo ? '#0F766E' : '#64748B',
+                boxShadow: activo ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                fontWeight: activo ? 700 : 500,
+              }}
+            >
+              <Icon size={14} aria-hidden />
+              {label}
+              {id === 'inventario' && bajoStock.length > 0 && (
+                <span style={{
+                  background: '#F59E0B', color: '#fff',
+                  fontSize: 10, fontWeight: 700,
+                  borderRadius: 999, width: 16, height: 16,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {bajoStock.length}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Contenido por tab */}
+      {/* ── CONTENIDO POR TAB ───────────────────────────────── */}
       {tabActivo === 'inventario' && (
         <TabInventario
           insumos={insumos}
@@ -197,7 +358,7 @@ export default function Insumos() {
           onEditar={soloLectura ? null : (ins) => setModalInsumo(ins)}
           onDesactivar={soloLectura ? null : (ins) => setConfirmDesactivar(ins)}
           loading={loading}
-          esProductor={soloLectura}
+          soloLectura={soloLectura}
         />
       )}
       {tabActivo === 'ventas' && !esProductor && (
@@ -226,8 +387,8 @@ export default function Insumos() {
         <TabReportes insumos={insumos} ventas={ventas} movimientos={movimientos} />
       )}
 
-      {/* Modales — solo para roles con permisos */}
-      {!esProductor && modalInsumo !== null && (
+      {/* ── MODALES ─────────────────────────────────────────── */}
+      {!soloLectura && modalInsumo !== null && (
         <ModalInsumo
           insumo={modalInsumo === 'crear' ? null : modalInsumo}
           onClose={() => setModalInsumo(null)}
@@ -239,7 +400,7 @@ export default function Insumos() {
           }}
         />
       )}
-      {!esProductor && modalVenta && (
+      {!soloLectura && modalVenta && (
         <ModalVenta
           insumos={insumos.filter(i => i.estado === 'ACTIVO')}
           productores={productores}
@@ -251,7 +412,7 @@ export default function Insumos() {
           }}
         />
       )}
-      {!esProductor && modalMovimiento && (
+      {!soloLectura && modalMovimiento && (
         <ModalMovimiento
           insumos={insumos.filter(i => i.estado === 'ACTIVO')}
           onClose={() => setModalMovimiento(false)}
@@ -262,7 +423,7 @@ export default function Insumos() {
           }}
         />
       )}
-      {!esProductor && confirmDesactivar && (
+      {!soloLectura && confirmDesactivar && (
         <ModalConfirm
           mensaje={`¿Desactivar el insumo "${confirmDesactivar.nombre}"? No se eliminará, pero no estará disponible para ventas.`}
           onConfirm={async () => {
@@ -278,121 +439,192 @@ export default function Insumos() {
 }
 
 // ── TAB: INVENTARIO ───────────────────────────────────────────
-// esProductor: oculta botones de acción (crear, editar, desactivar)
-function TabInventario({ insumos, busqueda, setBusqueda, onCrear, onEditar, onDesactivar, loading, esProductor }) {
+function TabInventario({ insumos, busqueda, setBusqueda, onCrear, onEditar, onDesactivar, loading, soloLectura }) {
   const filtrados = insumos.filter(i =>
     i.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     (i.codigo || '').toLowerCase().includes(busqueda.toLowerCase()) ||
     i.tipo.toLowerCase().includes(busqueda.toLowerCase())
   )
 
+  if (loading) return <SkeletonInventario />
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 justify-between">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Barra de búsqueda */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={14} color="#94A3B8" aria-hidden style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
           <input
+            className="ins-input"
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, código o tipo..."
-            className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="Buscar por nombre, código o tipo…"
+            style={{ ...inputBase, paddingLeft: 36, width: 280 }}
           />
         </div>
-        {/* Botón "Nuevo Insumo" — oculto para el productor */}
-        {!esProductor && onCrear && (
-          <button
-            onClick={onCrear}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-          >
-            <Plus size={15} /> Nuevo Insumo
+        {!soloLectura && onCrear && (
+          <button className="ins-btn-primary" onClick={onCrear}>
+            <Plus size={14} aria-hidden /> Nuevo Insumo
           </button>
         )}
       </div>
 
-      {loading ? (
-        <SkeletonTable cols={esProductor ? 6 : 7} />
+      {filtrados.length === 0 ? (
+        <EmptyState
+          icono={<Package size={28} color="#14B8A6" />}
+          titulo="No hay insumos registrados"
+          subtitulo="Agrega el primer insumo para comenzar a gestionar el inventario"
+          accion={!soloLectura && onCrear ? { label: '+ Nuevo Insumo', onClick: onCrear } : null}
+        />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
-                <th className="text-left px-4 py-3">Código</th>
-                <th className="text-left px-4 py-3">Nombre</th>
-                <th className="text-left px-4 py-3">Tipo</th>
-                <th className="text-right px-4 py-3">Precio</th>
-                <th className="text-right px-4 py-3">Stock</th>
-                <th className="text-right px-4 py-3">Mín.</th>
-                <th className="text-left px-4 py-3">Estado</th>
-                {/* Columna de acciones — oculta para el productor */}
-                {!esProductor && <th className="text-center px-4 py-3">Acciones</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtrados.length === 0 ? (
-                <tr>
-                  <td colSpan={esProductor ? 7 : 8} className="py-10 text-center text-gray-400 text-sm">
-                    No hay insumos registrados
-                  </td>
-                </tr>
-              ) : filtrados.map(ins => (
-                <tr key={ins.idInsumo} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500">{ins.codigo || '—'}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{ins.nombre}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${TIPO_COLORS[ins.tipo] || 'bg-gray-100 text-gray-700'}`}>
-                      {ins.tipo}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-700">
-                    ${Number(ins.precioUnitario).toLocaleString('es-CO')}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className={`font-semibold ${ins.bajoStock ? 'text-red-600' : 'text-gray-900'}`}>
-                      {Number(ins.stockActual).toLocaleString('es-CO')}
-                    </span>
-                    {ins.bajoStock && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}
-                    <span className="text-gray-400 text-xs ml-1">{ins.unidadMedida}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500 text-xs">
-                    {Number(ins.stockMinimo).toLocaleString('es-CO')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      ins.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {ins.estado}
-                    </span>
-                  </td>
-                  {/* Acciones — ocultas para el productor */}
-                  {!esProductor && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => onEditar(ins)}
-                          className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                          title="Editar"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        {ins.estado === 'ACTIVO' && (
-                          <button
-                            onClick={() => onDesactivar(ins)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Desactivar"
-                          >
-                            <XCircle size={14} />
-                          </button>
-                        )}
+        <>
+          {/* Grid de cards de insumos */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: 14,
+          }}>
+            {filtrados.map((ins, idx) => {
+              const tipo = TIPO_COLORS[ins.tipo] || TIPO_COLORS.OTRO
+              const pct = ins.stockMinimo > 0
+                ? Math.min(100, Math.round((ins.stockActual / ins.stockMinimo) * 100))
+                : 100
+              const barColor = pct < 50 ? '#EF4444' : pct <= 100 ? '#F59E0B' : '#10B981'
+              return (
+                <div
+                  key={ins.idInsumo}
+                  className="ins-card"
+                  style={{
+                    background: '#fff',
+                    border: `1px solid ${ins.bajoStock ? '#FCA5A5' : '#F1F5F9'}`,
+                    borderRadius: 14,
+                    overflow: 'hidden',
+                    animationDelay: `${idx * 0.04}s`,
+                  }}
+                >
+                  {/* borde top */}
+                  <div style={{
+                    height: 3,
+                    background: ins.bajoStock
+                      ? 'linear-gradient(90deg, #EF4444, #F97316)'
+                      : 'linear-gradient(90deg, #14B8A6, #06B6D4)',
+                  }} />
+
+                  <div style={{ padding: '14px 16px' }}>
+                    {/* header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                      <div>
+                        <p style={{ fontFamily: 'monospace', fontSize: 11, color: '#94A3B8', margin: 0 }}>
+                          {ins.codigo || '—'}
+                        </p>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: '2px 0 0', lineHeight: 1.3 }}>
+                          {ins.nombre}
+                        </p>
                       </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: '3px 8px',
+                          borderRadius: 999, background: tipo.bg, color: tipo.color,
+                        }}>
+                          {tipo.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* métrica principal: stock */}
+                    <div style={{
+                      background: ins.bajoStock ? '#FEF2F2' : '#F0FDFA',
+                      borderRadius: 10, padding: '10px 12px', marginBottom: 10,
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                        <div>
+                          <p style={{ fontSize: 11, color: '#64748B', margin: 0 }}>Stock actual</p>
+                          <p style={{ fontSize: 22, fontWeight: 900, color: ins.bajoStock ? '#EF4444' : '#14B8A6', margin: '1px 0 0', lineHeight: 1 }}>
+                            {Number(ins.stockActual).toLocaleString('es-CO')}
+                            <span style={{ fontSize: 12, fontWeight: 400, color: '#94A3B8', marginLeft: 4 }}>{ins.unidadMedida}</span>
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ fontSize: 11, color: '#64748B', margin: 0 }}>Precio unit.</p>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', margin: '1px 0 0' }}>
+                            ${Number(ins.precioUnitario).toLocaleString('es-CO')}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* barra de stock */}
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ height: 6, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', width: `${Math.min(pct, 100)}%`,
+                            background: barColor, borderRadius: 999,
+                            transition: 'width 0.6s ease',
+                          }} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                          <span style={{ fontSize: 10, color: '#94A3B8' }}>Mín: {Number(ins.stockMinimo).toLocaleString('es-CO')}</span>
+                          {ins.bajoStock && (
+                            <span style={{ fontSize: 10, color: '#EF4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <AlertTriangle size={9} aria-hidden /> Bajo stock
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* footer */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999,
+                        background: ins.estado === 'ACTIVO' ? '#D1FAE5' : '#F1F5F9',
+                        color: ins.estado === 'ACTIVO' ? '#065F46' : '#64748B',
+                      }}>
+                        {ins.estado === 'ACTIVO' ? '● Activo' : '○ Inactivo'}
+                      </span>
+
+                      {!soloLectura && (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button
+                            onClick={() => onEditar(ins)}
+                            title="Editar"
+                            style={{
+                              width: 30, height: 30, borderRadius: 8, border: '1.5px solid #E2E8F0',
+                              background: '#fff', cursor: 'pointer', display: 'flex',
+                              alignItems: 'center', justifyContent: 'center',
+                              transition: 'all 0.2s ease', color: '#64748B',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#14B8A6'; e.currentTarget.style.color = '#14B8A6' }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B' }}
+                          >
+                            <Edit2 size={13} aria-hidden />
+                          </button>
+                          {ins.estado === 'ACTIVO' && (
+                            <button
+                              onClick={() => onDesactivar(ins)}
+                              title="Desactivar"
+                              style={{
+                                width: 30, height: 30, borderRadius: 8, border: '1.5px solid #E2E8F0',
+                                background: '#fff', cursor: 'pointer', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.2s ease', color: '#64748B',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.borderColor = '#EF4444'; e.currentTarget.style.color = '#EF4444' }}
+                              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B' }}
+                            >
+                              <XCircle size={13} aria-hidden />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <p style={{ fontSize: 12, color: '#94A3B8', textAlign: 'right' }}>{filtrados.length} insumo(s)</p>
+        </>
       )}
-      <p className="text-xs text-gray-400 text-right">{filtrados.length} insumo(s)</p>
     </div>
   )
 }
@@ -406,117 +638,143 @@ function TabVentas({ ventas, busqueda, setBusqueda, onNuevaVenta, onMarcarPagado
     String(v.idVentaInsumo).includes(busqueda)
   )
 
+  if (loading) return <SkeletonCards n={4} />
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 justify-between">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={14} color="#94A3B8" aria-hidden style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
           <input
+            className="ins-input"
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar por productor o número..."
-            className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="Buscar por productor o número…"
+            style={{ ...inputBase, paddingLeft: 36, width: 280 }}
           />
         </div>
         {onNuevaVenta && (
-          <button
-            onClick={onNuevaVenta}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-          >
-            <Plus size={15} /> Nueva Venta
+          <button className="ins-btn-primary" onClick={onNuevaVenta}>
+            <Plus size={14} aria-hidden /> Nueva Venta
           </button>
         )}
       </div>
 
-      {loading ? <SkeletonTable cols={5} /> : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
-                <th className="text-left px-4 py-3">#</th>
-                <th className="text-left px-4 py-3">Fecha</th>
-                <th className="text-left px-4 py-3">Productor</th>
-                <th className="text-right px-4 py-3">Total</th>
-                <th className="text-left px-4 py-3">Pago</th>
-                <th className="text-center px-4 py-3">Detalle</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtradas.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-10 text-center text-gray-400 text-sm">
-                    No hay ventas registradas
-                  </td>
-                </tr>
-              ) : filtradas.map(v => (
-                <>
-                  <tr key={v.idVentaInsumo} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-400 text-xs font-mono">#{v.idVentaInsumo}</td>
-                    <td className="px-4 py-3 text-gray-700">{formatFecha(v.fecha)}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{v.nombreProductor}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                      ${Number(v.total).toLocaleString('es-CO')}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${ESTADO_PAGO_COLORS[v.estadoPagado] || ''}`}>
-                          {v.estadoPagado}
-                        </span>
-                        {v.estadoPagado !== 'PAGADO' && (
-                          <button
-                            onClick={() => onMarcarPagado(v.idVentaInsumo)}
-                            className="text-xs text-teal-600 hover:underline"
-                          >
-                            Marcar pagado
-                          </button>
-                        )}
+      {filtradas.length === 0 ? (
+        <EmptyState
+          icono={<ShoppingCart size={28} color="#14B8A6" />}
+          titulo="No hay ventas registradas"
+          subtitulo="Las ventas de insumos a productores aparecerán aquí"
+          accion={onNuevaVenta ? { label: '+ Nueva Venta', onClick: onNuevaVenta } : null}
+        />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {filtradas.map((v, idx) => {
+            const pago = ESTADO_PAGO[v.estadoPagado] || ESTADO_PAGO.PENDIENTE
+            const abierto = expandido === v.idVentaInsumo
+            return (
+              <div
+                key={v.idVentaInsumo}
+                className="ins-card"
+                style={{
+                  background: '#fff',
+                  border: '1px solid #F1F5F9',
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  animationDelay: `${idx * 0.05}s`,
+                }}
+              >
+                <div style={{ height: 3, background: 'linear-gradient(90deg, #14B8A6, #06B6D4)' }} />
+                <div style={{ padding: '14px 18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    {/* Avatar */}
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, #CCFBF1, #A5F3FC)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700, color: '#0F766E',
+                    }}>
+                      {(v.nombreProductor || 'P')[0].toUpperCase()}
+                    </div>
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: 0 }}>{v.nombreProductor}</p>
+                      <p style={{ fontSize: 11, color: '#94A3B8', margin: '2px 0 0' }}>
+                        #{v.idVentaInsumo} · {formatFecha(v.fecha)}
+                      </p>
+                    </div>
+                    {/* Total */}
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', margin: 0 }}>
+                        ${Number(v.total).toLocaleString('es-CO')}
+                      </p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', margin: '2px 0 0' }}>COP</p>
+                    </div>
+                    {/* Estado pago */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, padding: '3px 10px',
+                        borderRadius: 999, background: pago.bg, color: pago.color,
+                      }}>
+                        {v.estadoPagado}
+                      </span>
+                      {v.estadoPagado !== 'PAGADO' && onMarcarPagado && (
+                        <button
+                          onClick={() => onMarcarPagado(v.idVentaInsumo)}
+                          style={{ fontSize: 11, color: '#14B8A6', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                        >
+                          Marcar pagado →
+                        </button>
+                      )}
+                    </div>
+                    {/* Toggle detalle */}
+                    <button
+                      onClick={() => setExpandido(abierto ? null : v.idVentaInsumo)}
+                      style={{
+                        width: 30, height: 30, borderRadius: 8, border: '1.5px solid #E2E8F0',
+                        background: abierto ? '#F0FDFA' : '#fff', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: abierto ? '#14B8A6' : '#94A3B8', transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <ChevronDown size={14} aria-hidden style={{ transform: abierto ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+                    </button>
+                  </div>
+
+                  {/* Detalle expandido */}
+                  {abierto && v.items && (
+                    <div style={{
+                      marginTop: 14, borderTop: '1px solid #F1F5F9', paddingTop: 12,
+                      animation: 'ins-fade 0.18s ease both',
+                    }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                        Detalle de la venta
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {v.items.map((it, i) => {
+                          const tipo = TIPO_COLORS[it.tipo] || TIPO_COLORS.OTRO
+                          return (
+                            <div key={i} style={{
+                              display: 'flex', alignItems: 'center', gap: 10,
+                              background: '#FAFBFC', borderRadius: 8, padding: '8px 12px',
+                            }}>
+                              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{it.nombreInsumo}</span>
+                              <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 999, background: tipo.bg, color: tipo.color }}>{it.tipo}</span>
+                              <span style={{ fontSize: 12, color: '#64748B' }}>{it.cantidad} {it.unidadMedida}</span>
+                              <span style={{ fontSize: 12, color: '#64748B' }}>${Number(it.precioUnitario).toLocaleString('es-CO')}/u</span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', minWidth: 80, textAlign: 'right' }}>
+                                ${Number(it.subtotal).toLocaleString('es-CO')}
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => setExpandido(expandido === v.idVentaInsumo ? null : v.idVentaInsumo)}
-                        className="p-1.5 text-gray-400 hover:text-teal-600 rounded-lg hover:bg-teal-50 transition-colors"
-                      >
-                        <ChevronDown size={14} className={`transition-transform ${expandido === v.idVentaInsumo ? 'rotate-180' : ''}`} />
-                      </button>
-                    </td>
-                  </tr>
-                  {expandido === v.idVentaInsumo && v.items && (
-                    <tr key={`exp-${v.idVentaInsumo}`}>
-                      <td colSpan={6} className="px-4 pb-3 bg-gray-50">
-                        <div className="rounded-lg border border-gray-200 overflow-hidden mt-1">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="bg-gray-100 text-gray-500 uppercase">
-                                <th className="text-left px-3 py-2">Insumo</th>
-                                <th className="text-left px-3 py-2">Tipo</th>
-                                <th className="text-right px-3 py-2">Cantidad</th>
-                                <th className="text-right px-3 py-2">Precio unit.</th>
-                                <th className="text-right px-3 py-2">Subtotal</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {v.items.map((it, idx) => (
-                                <tr key={idx}>
-                                  <td className="px-3 py-2">{it.nombreInsumo}</td>
-                                  <td className="px-3 py-2">
-                                    <span className={`px-1.5 py-0.5 rounded text-xs ${TIPO_COLORS[it.tipo] || ''}`}>{it.tipo}</span>
-                                  </td>
-                                  <td className="px-3 py-2 text-right">{it.cantidad} {it.unidadMedida}</td>
-                                  <td className="px-3 py-2 text-right">${Number(it.precioUnitario).toLocaleString('es-CO')}</td>
-                                  <td className="px-3 py-2 text-right font-semibold">${Number(it.subtotal).toLocaleString('es-CO')}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
+                    </div>
                   )}
-                </>
-              ))}
-            </tbody>
-          </table>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -531,75 +789,90 @@ function TabMovimientos({ movimientos, busqueda, setBusqueda, onNuevoMovimiento,
     m.motivo.toLowerCase().includes(busqueda.toLowerCase())
   )
 
+  if (loading) return <SkeletonCards n={5} />
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 justify-between">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={14} color="#94A3B8" aria-hidden style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
           <input
+            className="ins-input"
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar por insumo, tipo o motivo..."
-            className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="Buscar por insumo, tipo o motivo…"
+            style={{ ...inputBase, paddingLeft: 36, width: 280 }}
           />
         </div>
         {onNuevoMovimiento && (
-          <button
-            onClick={onNuevoMovimiento}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-          >
-            <Plus size={15} /> Nuevo Movimiento
+          <button className="ins-btn-primary" onClick={onNuevoMovimiento}>
+            <Plus size={14} aria-hidden /> Nuevo Movimiento
           </button>
         )}
       </div>
 
-      {loading ? <SkeletonTable cols={7} /> : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
-                <th className="text-left px-4 py-3">Fecha</th>
-                <th className="text-left px-4 py-3">Tipo</th>
-                <th className="text-left px-4 py-3">Motivo</th>
-                <th className="text-left px-4 py-3">Insumo</th>
-                <th className="text-right px-4 py-3">Cantidad</th>
-                <th className="text-right px-4 py-3">Stock antes</th>
-                <th className="text-right px-4 py-3">Stock después</th>
-                <th className="text-left px-4 py-3">Responsable</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtrados.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-10 text-center text-gray-400 text-sm">
-                    No hay movimientos registrados
-                  </td>
-                </tr>
-              ) : filtrados.map(m => (
-                <tr key={m.idMovimiento} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-gray-500 text-xs">{formatFecha(m.fecha)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1 w-fit ${MOV_COLORS[m.tipoMovimiento] || ''}`}>
-                      {m.tipoMovimiento === 'ENTRADA' ? <ArrowDown size={11} /> : m.tipoMovimiento === 'SALIDA' ? <ArrowUp size={11} /> : null}
-                      {m.tipoMovimiento}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{m.motivo}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{m.nombreInsumo}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">
+      {filtrados.length === 0 ? (
+        <EmptyState
+          icono={<ArrowUpDown size={28} color="#14B8A6" />}
+          titulo="No hay movimientos registrados"
+          subtitulo="Las entradas, salidas y ajustes de inventario aparecerán aquí"
+          accion={onNuevoMovimiento ? { label: '+ Nuevo Movimiento', onClick: onNuevoMovimiento } : null}
+        />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtrados.map((m, idx) => {
+            const mov = MOV_STYLE[m.tipoMovimiento] || MOV_STYLE.AJUSTE
+            const MovIco = mov.icon
+            return (
+              <div
+                key={m.idMovimiento}
+                className="ins-card"
+                style={{
+                  background: '#fff',
+                  border: '1px solid #F1F5F9',
+                  borderRadius: 12, padding: '12px 16px',
+                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                  animationDelay: `${idx * 0.03}s`,
+                }}
+              >
+                {/* Tipo badge */}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  background: mov.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <MovIco size={16} color={mov.color} aria-hidden />
+                </div>
+                {/* Insumo y tipo */}
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', margin: 0 }}>{m.nombreInsumo}</p>
+                  <p style={{ fontSize: 11, color: '#94A3B8', margin: '2px 0 0' }}>{m.motivo}</p>
+                </div>
+                {/* Cantidad */}
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: 16, fontWeight: 900, color: mov.color, margin: 0 }}>
+                    {m.tipoMovimiento === 'ENTRADA' ? '+' : m.tipoMovimiento === 'SALIDA' ? '-' : ''}
                     {Number(m.cantidad).toLocaleString('es-CO')}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500">
+                  </p>
+                  <p style={{ fontSize: 10, color: '#94A3B8', margin: '2px 0 0' }}>unidades</p>
+                </div>
+                {/* Antes / Después */}
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: '#94A3B8', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6 }}>
                     {Number(m.stockAntes).toLocaleString('es-CO')}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-700">
+                  </span>
+                  <ArrowRight />
+                  <span style={{ fontSize: 11, color: '#0F766E', background: '#CCFBF1', padding: '3px 8px', borderRadius: 6, fontWeight: 700 }}>
                     {Number(m.stockDespues).toLocaleString('es-CO')}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{m.nombreUsuario}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                </div>
+                {/* Fecha y usuario */}
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: 11, color: '#64748B', margin: 0 }}>{m.nombreUsuario}</p>
+                  <p style={{ fontSize: 10, color: '#94A3B8', margin: '2px 0 0' }}>{formatFecha(m.fecha)}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -608,123 +881,159 @@ function TabMovimientos({ movimientos, busqueda, setBusqueda, onNuevoMovimiento,
 
 // ── TAB: REPORTES ─────────────────────────────────────────────
 function TabReportes({ insumos, ventas, movimientos }) {
-  const activos         = insumos.filter(i => i.estado === 'ACTIVO')
-  const bajoStockList   = activos.filter(i => i.bajoStock)
-  const totalVentas     = ventas.reduce((s, v) => s + Number(v.total), 0)
+  const activos          = insumos.filter(i => i.estado === 'ACTIVO')
+  const bajoStockList    = activos.filter(i => i.bajoStock)
+  const totalVentas      = ventas.reduce((s, v) => s + Number(v.total), 0)
   const ventasPendientes = ventas.filter(v => v.estadoPagado !== 'PAGADO').length
-  const entradas        = movimientos.filter(m => m.tipoMovimiento === 'ENTRADA').length
-  const salidas         = movimientos.filter(m => m.tipoMovimiento === 'SALIDA').length
+  const entradas         = movimientos.filter(m => m.tipoMovimiento === 'ENTRADA').length
+  const salidas          = movimientos.filter(m => m.tipoMovimiento === 'SALIDA').length
 
-  const cards = [
-    { label: 'Insumos activos',        valor: activos.length,       sub: `${insumos.length} totales`,        color: 'border-teal-200 bg-teal-50',   texto: 'text-teal-700',   icono: Package,       alerta: false },
-    { label: 'Bajo stock mínimo',      valor: bajoStockList.length, sub: bajoStockList.length > 0 ? '⚠ Requieren reabastecimiento' : '✓ Todo en orden', color: bajoStockList.length > 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50', texto: bajoStockList.length > 0 ? 'text-red-700' : 'text-green-700', icono: AlertTriangle, alerta: bajoStockList.length > 0 },
-    { label: 'Total ventas (COP)',      valor: `$${totalVentas.toLocaleString('es-CO')}`, sub: `${ventas.length} transacciones`, color: 'border-blue-200 bg-blue-50',   texto: 'text-blue-700',  icono: ShoppingCart,  alerta: false },
-    { label: 'Ventas pendientes pago', valor: ventasPendientes,     sub: ventasPendientes > 0 ? 'Pendiente de cobro' : 'Todo cobrado', color: ventasPendientes > 0 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50', texto: ventasPendientes > 0 ? 'text-amber-700' : 'text-green-700', icono: XCircle, alerta: ventasPendientes > 0 },
-    { label: 'Entradas al inventario', valor: entradas,             sub: 'Movimientos de entrada',           color: 'border-green-200 bg-green-50',  texto: 'text-green-700', icono: ArrowDown,     alerta: false },
-    { label: 'Salidas del inventario', valor: salidas,              sub: 'Movimientos de salida',            color: 'border-purple-200 bg-purple-50', texto: 'text-purple-700', icono: ArrowUp,      alerta: false },
+  const kpis = [
+    { label: 'Insumos activos',    valor: activos.length,
+      sub: `${insumos.length} totales`,
+      bg: '#F0FDFA', color: '#0F766E', icono: Boxes },
+    { label: 'Bajo stock mínimo',  valor: bajoStockList.length,
+      sub: bajoStockList.length > 0 ? 'Requieren reabastecimiento' : '✓ Todo en orden',
+      bg: bajoStockList.length > 0 ? '#FEF2F2' : '#F0FDF4',
+      color: bajoStockList.length > 0 ? '#991B1B' : '#065F46', icono: AlertTriangle },
+    { label: 'Ventas totales',     valor: `$${totalVentas.toLocaleString('es-CO')}`,
+      sub: `${ventas.length} transacciones`,
+      bg: '#EFF6FF', color: '#1E40AF', icono: DollarSign },
+    { label: 'Pagos pendientes',   valor: ventasPendientes,
+      sub: ventasPendientes > 0 ? 'Pendiente de cobro' : 'Todo cobrado',
+      bg: ventasPendientes > 0 ? '#FFFBEB' : '#F0FDF4',
+      color: ventasPendientes > 0 ? '#92400E' : '#065F46', icono: ShoppingCart },
+    { label: 'Entradas registradas', valor: entradas,
+      sub: 'Movimientos de entrada',
+      bg: '#F0FDF4', color: '#065F46', icono: ArrowDown },
+    { label: 'Salidas registradas',  valor: salidas,
+      sub: 'Movimientos de salida',
+      bg: '#FDF4FF', color: '#6B21A8', icono: TrendingUp },
   ]
 
   return (
-    <div className="space-y-6">
-
-      {/* Alerta prominente si hay bajo stock */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {bajoStockList.length > 0 && (
-        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
-          <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          padding: '14px 18px',
+          background: 'linear-gradient(135deg, #FEF2F2, #FFF1F2)',
+          border: '1px solid #FECDD3', borderRadius: 12,
+          animation: 'ins-fade 0.25s ease both',
+        }}>
+          <AlertTriangle size={18} color="#EF4444" aria-hidden />
           <div>
-            <p className="text-sm font-semibold text-red-800">
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#991B1B', margin: 0 }}>
               {bajoStockList.length} insumo{bajoStockList.length > 1 ? 's' : ''} bajo stock mínimo
             </p>
-            <p className="text-xs text-red-600 mt-0.5">
+            <p style={{ fontSize: 12, color: '#B91C1C', margin: '3px 0 0' }}>
               {bajoStockList.map(i => i.nombre).join(' · ')}
             </p>
           </div>
         </div>
       )}
 
-      {/* 6 tarjetas de indicadores */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {cards.map(({ label, valor, sub, color, texto, icono: Ic, alerta }) => (
-          <div key={label} className={`rounded-xl p-4 border ${color}`}>
-            <div className={`flex items-center gap-2 mb-2 ${texto}`}>
-              <Ic size={15} />
-              <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
+      {/* KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+        {kpis.map(({ label, valor, sub, bg, color, icono: Ic }, idx) => (
+          <div
+            key={label}
+            className="ins-card"
+            style={{
+              background: bg, border: '1px solid #F1F5F9', borderRadius: 14,
+              padding: '16px 18px', animationDelay: `${idx * 0.05}s`,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Ic size={14} color={color} aria-hidden />
+              <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {label}
+              </span>
             </div>
-            <p className={`text-2xl font-bold ${texto}`}>{valor}</p>
-            <p className="text-xs text-gray-500 mt-1">{sub}</p>
+            <p style={{ fontSize: 22, fontWeight: 900, color, margin: 0, lineHeight: 1 }}>{valor}</p>
+            <p style={{ fontSize: 11, color: '#64748B', margin: '6px 0 0' }}>{sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Tabla de estado del inventario */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700">Estado actual del inventario</h3>
-          <span className="text-xs text-gray-400">{activos.length} insumos activos</span>
+      {/* Tabla estado inventario */}
+      <div style={{ background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14, overflow: 'hidden' }}>
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid #F1F5F9',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: 'linear-gradient(135deg, #F0FDFA, #F8FAFC)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Fish size={15} color="#14B8A6" aria-hidden />
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>Estado actual del inventario</span>
+          </div>
+          <span style={{ fontSize: 11, color: '#94A3B8' }}>{activos.length} insumos activos</span>
         </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-gray-500 text-xs uppercase border-b border-gray-100 bg-gray-50">
-              <th className="text-left px-4 py-3">Insumo</th>
-              <th className="text-left px-4 py-3">Tipo</th>
-              <th className="text-right px-4 py-3">Stock actual</th>
-              <th className="text-right px-4 py-3">Mínimo</th>
-              <th className="text-left px-4 py-3 w-32">Cobertura</th>
-              <th className="text-left px-4 py-3">Estado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {activos
-              .sort((a, b) => (a.bajoStock ? -1 : 1) - (b.bajoStock ? -1 : 1))
-              .map(i => {
-                const pct = i.stockMinimo > 0
-                  ? Math.min(100, Math.round((i.stockActual / i.stockMinimo) * 100))
-                  : 100
-                const critico = pct < 50
-                const advertencia = pct >= 50 && pct <= 100
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#FAFBFC' }}>
+                {['Insumo', 'Tipo', 'Stock actual', 'Mínimo', 'Cobertura', 'Estado'].map(h => (
+                  <th key={h} style={{ padding: '10px 14px', textAlign: h === 'Insumo' || h === 'Tipo' ? 'left' : h === 'Cobertura' ? 'left' : 'right', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F1F5F9' }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {activos.sort((a, b) => (a.bajoStock ? -1 : 1) - (b.bajoStock ? -1 : 1)).map(i => {
+                const pct = i.stockMinimo > 0 ? Math.min(100, Math.round((i.stockActual / i.stockMinimo) * 100)) : 100
+                const tipo = TIPO_COLORS[i.tipo] || TIPO_COLORS.OTRO
                 return (
-                  <tr key={i.idInsumo} className={i.bajoStock ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{i.nombre}</p>
-                      {i.codigo && <p className="text-xs text-gray-400">{i.codigo}</p>}
+                  <tr key={i.idInsumo} className="ins-row" style={{ borderBottom: '1px solid #F8FAFC', background: i.bajoStock ? '#FEF2F2' : '#fff' }}>
+                    <td style={{ padding: '10px 14px' }}>
+                      <p style={{ fontWeight: 700, color: '#0F172A', margin: 0 }}>{i.nombre}</p>
+                      {i.codigo && <p style={{ fontSize: 11, color: '#94A3B8', margin: '2px 0 0', fontFamily: 'monospace' }}>{i.codigo}</p>}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TIPO_COLORS[i.tipo] || ''}`}>{i.tipo}</span>
+                    <td style={{ padding: '10px 14px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999, background: tipo.bg, color: tipo.color }}>
+                        {tipo.label}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-gray-800">
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: i.bajoStock ? '#EF4444' : '#0F172A' }}>
                       {Number(i.stockActual).toLocaleString('es-CO')}
-                      <span className="text-gray-400 text-xs ml-1 font-normal">{i.unidadMedida}</span>
+                      <span style={{ fontSize: 11, fontWeight: 400, color: '#94A3B8', marginLeft: 4 }}>{i.unidadMedida}</span>
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-500">
+                    <td style={{ padding: '10px 14px', textAlign: 'right', color: '#64748B' }}>
                       {Number(i.stockMinimo).toLocaleString('es-CO')}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${critico ? 'bg-red-500' : advertencia ? 'bg-amber-400' : 'bg-green-500'}`}
-                            style={{ width: `${Math.min(pct, 100)}%` }}
-                          />
+                    <td style={{ padding: '10px 14px', minWidth: 120 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, height: 6, background: '#F1F5F9', borderRadius: 999, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%',
+                            width: `${Math.min(pct, 100)}%`,
+                            background: pct < 50 ? '#EF4444' : pct <= 100 ? '#F59E0B' : '#10B981',
+                            borderRadius: 999, transition: 'width 0.6s ease',
+                          }} />
                         </div>
-                        <span className={`text-xs font-semibold w-8 text-right ${critico ? 'text-red-600' : advertencia ? 'text-amber-600' : 'text-green-600'}`}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: pct < 50 ? '#EF4444' : pct <= 100 ? '#D97706' : '#059669', width: 32, textAlign: 'right' }}>
                           {pct}%
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                       {i.bajoStock
-                        ? <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold"><AlertTriangle size={11} /> Bajo stock</span>
-                        : <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold"><CheckCircle size={11} /> OK</span>
+                        ? <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999, background: '#FEE2E2', color: '#991B1B', display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle size={10} /> Bajo stock</span>
+                        : <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999, background: '#D1FAE5', color: '#065F46', display: 'inline-flex', alignItems: 'center', gap: 4 }}><CheckCircle size={10} /> OK</span>
                       }
                     </td>
                   </tr>
                 )
               })}
-          </tbody>
-        </table>
-        {activos.length === 0 && (
-          <div className="py-10 text-center text-gray-400 text-sm">Sin insumos activos registrados</div>
-        )}
+            </tbody>
+          </table>
+          {activos.length === 0 && (
+            <div style={{ padding: '40px 0', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
+              Sin insumos activos registrados
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -748,27 +1057,32 @@ function ModalInsumo({ insumo, onClose, onSave }) {
   const handleSubmit = async () => {
     setSaving(true)
     setErr(null)
-    try {
-      await onSave(form)
-    } catch (e) {
-      setErr(e.response?.data?.mensaje || 'Error al guardar el insumo.')
-    } finally {
-      setSaving(false)
-    }
+    try { await onSave(form) }
+    catch (e) { setErr(e.response?.data?.mensaje || 'Error al guardar el insumo.') }
+    finally { setSaving(false) }
   }
 
   return (
-    <ModalWrapper title={insumo ? 'Editar Insumo' : 'Nuevo Insumo'} onClose={onClose}>
-      <div className="space-y-4">
-        {err && <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg">{err}</p>}
+    <ModalWrapper
+      titulo={insumo ? 'Editar Insumo' : 'Nuevo Insumo'}
+      subtitulo={insumo ? 'Modifica los datos del insumo' : 'Agrega un nuevo insumo al inventario'}
+      icono={<Package size={20} color="#fff" />}
+      onClose={onClose}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {err && (
+          <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 9, fontSize: 13, color: '#991B1B' }}>
+            {err}
+          </div>
+        )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Código (opcional)">
-            <input className={INPUT_CLS} value={form.codigo}
+            <input className="ins-input" style={inputBase} value={form.codigo}
               onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))} placeholder="ALE-001" />
           </Field>
           <Field label="Tipo *">
-            <select className={INPUT_CLS} value={form.tipo}
+            <select className="ins-input" style={inputBase} value={form.tipo}
               onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
               <option value="ALEVINO">ALEVINO</option>
               <option value="CONCENTRADO">CONCENTRADO</option>
@@ -778,33 +1092,33 @@ function ModalInsumo({ insumo, onClose, onSave }) {
         </div>
 
         <Field label="Nombre *">
-          <input className={INPUT_CLS} value={form.nombre}
+          <input className="ins-input" style={inputBase} value={form.nombre}
             onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Cachama, Purina 40%…" />
         </Field>
 
         <Field label="Descripción">
-          <input className={INPUT_CLS} value={form.descripcion}
+          <input className="ins-input" style={inputBase} value={form.descripcion}
             onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} />
         </Field>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           <Field label="Precio unitario (COP) *">
-            <input type="number" className={INPUT_CLS} value={form.precioUnitario}
+            <input type="number" className="ins-input" style={inputBase} value={form.precioUnitario}
               onChange={e => setForm(f => ({ ...f, precioUnitario: e.target.value }))} />
           </Field>
-          <Field label={`Stock actual (${form.tipo === 'CONCENTRADO' ? 'bultos' : 'unidades'}) *`}>
-            <input type="number" className={INPUT_CLS} value={form.stockActual}
+          <Field label={`Stock actual(${form.tipo === 'CONCENTRADO' ? 'bultos' : 'unidades'})*`}>
+            <input type="number" className="ins-input" style={inputBase} value={form.stockActual}
               onChange={e => setForm(f => ({ ...f, stockActual: e.target.value }))} />
           </Field>
           <Field label="Stock mínimo *">
-            <input type="number" className={INPUT_CLS} value={form.stockMinimo}
+            <input type="number" className="ins-input" style={inputBase} value={form.stockMinimo}
               onChange={e => setForm(f => ({ ...f, stockMinimo: e.target.value }))} />
           </Field>
         </div>
 
         {insumo && (
           <Field label="Estado">
-            <select className={INPUT_CLS} value={form.estado}
+            <select className="ins-input" style={inputBase} value={form.estado}
               onChange={e => setForm(f => ({ ...f, estado: e.target.value }))}>
               <option value="ACTIVO">ACTIVO</option>
               <option value="INACTIVO">INACTIVO</option>
@@ -812,16 +1126,11 @@ function ModalInsumo({ insumo, onClose, onSave }) {
           </Field>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
-          >
-            {saving ? 'Guardando…' : 'Guardar'}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
+          <button className="ins-btn-outline" onClick={onClose}>Cancelar</button>
+          <button className="ins-btn-primary" onClick={handleSubmit} disabled={saving}
+            style={{ opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Guardando…' : 'Guardar insumo'}
           </button>
         </div>
       </div>
@@ -848,8 +1157,7 @@ function ModalVenta({ insumos, productores, onClose, onSave }) {
   }, 0)
 
   const handleSave = async () => {
-    setSaving(true)
-    setErr(null)
+    setSaving(true); setErr(null)
     try {
       await onSave({
         idProductor: Number(idProductor),
@@ -858,29 +1166,30 @@ function ModalVenta({ insumos, productores, onClose, onSave }) {
       })
     } catch (e) {
       setErr(e.response?.data?.mensaje || 'Error al registrar la venta.')
-    } finally {
-      setSaving(false)
-    }
+    } finally { setSaving(false) }
   }
 
   return (
-    <ModalWrapper title="Nueva Venta de Insumos" onClose={onClose}>
-      <div className="space-y-4">
-        {err && <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg">{err}</p>}
+    <ModalWrapper
+      titulo="Nueva Venta de Insumos"
+      subtitulo="Registra la venta de insumos a un productor"
+      icono={<ShoppingCart size={20} color="#fff" />}
+      onClose={onClose}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {err && <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 9, fontSize: 13, color: '#991B1B' }}>{err}</div>}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Productor *">
-            <select className={INPUT_CLS} value={idProductor} onChange={e => setIdProductor(e.target.value)}>
+            <select className="ins-input" style={inputBase} value={idProductor} onChange={e => setIdProductor(e.target.value)}>
               <option value="">Seleccionar…</option>
               {productores.map(p => (
-                <option key={p.idProductor} value={p.idProductor}>
-                  {p.nombre1} {p.apellido1}
-                </option>
+                <option key={p.idProductor} value={p.idProductor}>{p.nombre1} {p.apellido1}</option>
               ))}
             </select>
           </Field>
           <Field label="Estado de pago *">
-            <select className={INPUT_CLS} value={estadoPagado} onChange={e => setEstadoPagado(e.target.value)}>
+            <select className="ins-input" style={inputBase} value={estadoPagado} onChange={e => setEstadoPagado(e.target.value)}>
               <option value="PENDIENTE">PENDIENTE</option>
               <option value="CREDITO">CRÉDITO</option>
               <option value="PAGADO">PAGADO</option>
@@ -888,62 +1197,70 @@ function ModalVenta({ insumos, productores, onClose, onSave }) {
           </Field>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-gray-700">Insumos</label>
-            <button onClick={addItem} className="text-xs text-teal-600 hover:underline flex items-center gap-1">
-              <Plus size={12} /> Agregar ítem
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Insumos
+            </label>
+            <button onClick={addItem} style={{ fontSize: 12, color: '#14B8A6', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Plus size={12} aria-hidden /> Agregar ítem
             </button>
           </div>
-          {items.map((item, i) => {
-            const ins = insumos.find(x => String(x.idInsumo) === String(item.idInsumo))
-            const subtotal = ins ? Number(ins.precioUnitario) * Number(item.cantidad || 0) : 0
-            return (
-              <div key={i} className="flex gap-2 items-center bg-gray-50 rounded-lg p-2">
-                <select
-                  className="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-                  value={item.idInsumo}
-                  onChange={e => updateItem(i, 'idInsumo', e.target.value)}
-                >
-                  <option value="">Seleccionar insumo…</option>
-                  {insumos.map(ins => (
-                    <option key={ins.idInsumo} value={ins.idInsumo}>
-                      {ins.nombre} ({ins.tipo}) — Stock: {ins.stockActual} {ins.unidadMedida}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number" min={1}
-                  value={item.cantidad}
-                  onChange={e => updateItem(i, 'cantidad', e.target.value)}
-                  className="w-20 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-right focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-                <span className="text-xs text-gray-500 w-28 text-right">
-                  ${subtotal.toLocaleString('es-CO')}
-                </span>
-                {items.length > 1 && (
-                  <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600">
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-            )
-          })}
-          <div className="flex justify-end pt-1">
-            <span className="text-sm font-semibold text-gray-900">
-              Total: ${total.toLocaleString('es-CO')} COP
-            </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {items.map((item, i) => {
+              const ins = insumos.find(x => String(x.idInsumo) === String(item.idInsumo))
+              const subtotal = ins ? Number(ins.precioUnitario) * Number(item.cantidad || 0) : 0
+              return (
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#FAFBFC', borderRadius: 10, padding: '8px 10px', border: '1px solid #F1F5F9' }}>
+                  <select
+                    className="ins-input"
+                    style={{ ...inputBase, flex: 1, fontSize: 12 }}
+                    value={item.idInsumo}
+                    onChange={e => updateItem(i, 'idInsumo', e.target.value)}
+                  >
+                    <option value="">Seleccionar insumo…</option>
+                    {insumos.map(ins => (
+                      <option key={ins.idInsumo} value={ins.idInsumo}>
+                        {ins.nombre} ({ins.tipo}) — Stock: {ins.stockActual} {ins.unidadMedida}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number" min={1}
+                    value={item.cantidad}
+                    onChange={e => updateItem(i, 'cantidad', e.target.value)}
+                    className="ins-input"
+                    style={{ ...inputBase, width: 72, textAlign: 'right' }}
+                  />
+                  <span style={{ fontSize: 12, color: '#64748B', width: 90, textAlign: 'right', flexShrink: 0 }}>
+                    ${subtotal.toLocaleString('es-CO')}
+                  </span>
+                  {items.length > 1 && (
+                    <button onClick={() => removeItem(i)} style={{ color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
+                      <X size={14} aria-hidden />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+            <div style={{
+              display: 'flex', justifyContent: 'flex-end', paddingTop: 6,
+              borderTop: '1px solid #F1F5F9',
+            }}>
+              <span style={{ fontSize: 15, fontWeight: 900, color: '#0F172A' }}>
+                Total: ${total.toLocaleString('es-CO')} COP
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-            Cancelar
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
+          <button className="ins-btn-outline" onClick={onClose}>Cancelar</button>
           <button
+            className="ins-btn-primary"
             onClick={handleSave}
             disabled={saving || !idProductor || items.some(it => !it.idInsumo)}
-            className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+            style={{ opacity: (saving || !idProductor || items.some(it => !it.idInsumo)) ? 0.5 : 1 }}
           >
             {saving ? 'Registrando…' : 'Registrar Venta'}
           </button>
@@ -958,33 +1275,33 @@ const MOTIVOS_ENTRADA = ['COMPRA', 'DONACION', 'AJUSTE_ADMIN', 'CORRECCION']
 const MOTIVOS_SALIDA  = ['PERDIDA', 'DANO', 'AJUSTE_ADMIN']
 
 function ModalMovimiento({ insumos, onClose, onSave }) {
-  const [form, setForm] = useState({
-    idInsumo: '', tipoMovimiento: 'ENTRADA', motivo: 'COMPRA', cantidad: '', observacion: ''
-  })
+  const [form, setForm] = useState({ idInsumo: '', tipoMovimiento: 'ENTRADA', motivo: 'COMPRA', cantidad: '', observacion: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState(null)
 
   const motivos = form.tipoMovimiento === 'SALIDA' ? MOTIVOS_SALIDA : MOTIVOS_ENTRADA
 
   const handleSave = async () => {
-    setSaving(true)
-    setErr(null)
+    setSaving(true); setErr(null)
     try {
       await onSave({ ...form, idInsumo: Number(form.idInsumo), cantidad: Number(form.cantidad) })
     } catch (e) {
       setErr(e.response?.data?.mensaje || 'Error al registrar el movimiento.')
-    } finally {
-      setSaving(false)
-    }
+    } finally { setSaving(false) }
   }
 
   return (
-    <ModalWrapper title="Registrar Movimiento" onClose={onClose}>
-      <div className="space-y-4">
-        {err && <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg">{err}</p>}
+    <ModalWrapper
+      titulo="Registrar Movimiento"
+      subtitulo="Entrada, salida o ajuste de inventario"
+      icono={<ArrowUpDown size={20} color="#fff" />}
+      onClose={onClose}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {err && <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 9, fontSize: 13, color: '#991B1B' }}>{err}</div>}
 
         <Field label="Insumo *">
-          <select className={INPUT_CLS} value={form.idInsumo}
+          <select className="ins-input" style={inputBase} value={form.idInsumo}
             onChange={e => setForm(f => ({ ...f, idInsumo: e.target.value }))}>
             <option value="">Seleccionar…</option>
             {insumos.map(i => (
@@ -995,9 +1312,9 @@ function ModalMovimiento({ insumos, onClose, onSave }) {
           </select>
         </Field>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Tipo de movimiento *">
-            <select className={INPUT_CLS} value={form.tipoMovimiento}
+            <select className="ins-input" style={inputBase} value={form.tipoMovimiento}
               onChange={e => setForm(f => ({ ...f, tipoMovimiento: e.target.value, motivo: '' }))}>
               <option value="ENTRADA">ENTRADA</option>
               <option value="SALIDA">SALIDA</option>
@@ -1005,7 +1322,7 @@ function ModalMovimiento({ insumos, onClose, onSave }) {
             </select>
           </Field>
           <Field label="Motivo *">
-            <select className={INPUT_CLS} value={form.motivo}
+            <select className="ins-input" style={inputBase} value={form.motivo}
               onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))}>
               <option value="">Seleccionar…</option>
               {motivos.map(m => <option key={m} value={m}>{m}</option>)}
@@ -1014,24 +1331,23 @@ function ModalMovimiento({ insumos, onClose, onSave }) {
         </div>
 
         <Field label={form.tipoMovimiento === 'AJUSTE' ? 'Nuevo stock total *' : 'Cantidad *'}>
-          <input type="number" min={0.01} step={0.01} className={INPUT_CLS}
+          <input type="number" min={0.01} step={0.01} className="ins-input" style={inputBase}
             value={form.cantidad}
             onChange={e => setForm(f => ({ ...f, cantidad: e.target.value }))} />
         </Field>
 
         <Field label="Observación">
-          <input className={INPUT_CLS} value={form.observacion}
+          <input className="ins-input" style={inputBase} value={form.observacion}
             onChange={e => setForm(f => ({ ...f, observacion: e.target.value }))} />
         </Field>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-            Cancelar
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
+          <button className="ins-btn-outline" onClick={onClose}>Cancelar</button>
           <button
+            className="ins-btn-primary"
             onClick={handleSave}
             disabled={saving || !form.idInsumo || !form.motivo || !form.cantidad}
-            className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+            style={{ opacity: (saving || !form.idInsumo || !form.motivo || !form.cantidad) ? 0.5 : 1 }}
           >
             {saving ? 'Registrando…' : 'Registrar'}
           </button>
@@ -1042,17 +1358,55 @@ function ModalMovimiento({ insumos, onClose, onSave }) {
 }
 
 // ── COMPONENTES AUXILIARES ────────────────────────────────────
-function ModalWrapper({ title, onClose, children }) {
+function ModalWrapper({ titulo, subtitulo, icono, onClose, children }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={18} />
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16,
+      background: 'rgba(15,23,42,0.45)',
+      backdropFilter: 'blur(4px)',
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 20,
+        width: '100%', maxWidth: 560,
+        maxHeight: '92vh', overflowY: 'auto',
+        animation: 'ins-modal-in 0.2s ease both',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 14,
+          padding: '20px 24px', borderBottom: '1px solid #F1F5F9',
+          position: 'sticky', top: 0, background: '#fff', zIndex: 1,
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+            background: 'linear-gradient(135deg, #14B8A6, #06B6D4)',
+            boxShadow: '0 3px 10px rgba(20,184,166,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {icono}
+          </div>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>{titulo}</h2>
+            {subtitulo && <p style={{ fontSize: 12, color: '#64748B', margin: '2px 0 0' }}>{subtitulo}</p>}
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 32, height: 32, borderRadius: 8, border: '1.5px solid #E2E8F0',
+              background: '#fff', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', color: '#94A3B8',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.color = '#EF4444' }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#94A3B8' }}
+          >
+            <X size={15} aria-hidden />
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div style={{ padding: '20px 24px' }}>{children}</div>
       </div>
     </div>
   )
@@ -1060,18 +1414,37 @@ function ModalWrapper({ title, onClose, children }) {
 
 function ModalConfirm({ mensaje, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-        <div className="flex items-start gap-4">
-          <AlertTriangle size={22} className="text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-gray-700">{mensaje}</p>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)',
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 20, padding: 28, maxWidth: 420, width: '100%',
+        animation: 'ins-modal-in 0.2s ease both',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+      }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 20 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <AlertTriangle size={18} color="#D97706" aria-hidden />
+          </div>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>Confirmar acción</p>
+            <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.5 }}>{mensaje}</p>
+          </div>
         </div>
-        <div className="flex justify-end gap-3 mt-5">
-          <button onClick={onCancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
-            Cancelar
-          </button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">
-            Confirmar
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button className="ins-btn-outline" onClick={onCancel}>Cancelar</button>
+          <button
+            onClick={onConfirm}
+            style={{
+              background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+              color: '#fff', border: 'none', borderRadius: 10,
+              padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Desactivar
           </button>
         </div>
       </div>
@@ -1081,25 +1454,85 @@ function ModalConfirm({ mensaje, onConfirm, onCancel }) {
 
 function Field({ label, children }) {
   return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-600">{label}</label>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {label}
+      </label>
       {children}
     </div>
   )
 }
 
-function SkeletonTable({ cols }) {
+function EmptyState({ icono, titulo, subtitulo, accion }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
-      <div className="h-10 bg-gray-50 border-b border-gray-100" />
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex gap-4 px-4 py-3 border-b border-gray-50">
-          {[...Array(cols)].map((_, j) => (
-            <div key={j} className="h-4 bg-gray-100 rounded flex-1" />
-          ))}
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      justifyContent: 'center', padding: '60px 20px',
+      background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14,
+      animation: 'ins-fade 0.3s ease both',
+    }}>
+      <div style={{
+        width: 56, height: 56, borderRadius: 16, marginBottom: 16,
+        background: 'linear-gradient(135deg, #CCFBF1, #A5F3FC)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {icono}
+      </div>
+      <p style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 6px', textAlign: 'center' }}>{titulo}</p>
+      <p style={{ fontSize: 13, color: '#94A3B8', margin: '0 0 18px', textAlign: 'center', maxWidth: 320, lineHeight: 1.5 }}>{subtitulo}</p>
+      {accion && (
+        <button className="ins-btn-primary" onClick={accion.onClick}>{accion.label}</button>
+      )}
+    </div>
+  )
+}
+
+function SkeletonInventario() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+      {[...Array(6)].map((_, i) => (
+        <div key={i} style={{ background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14, overflow: 'hidden', animationDelay: `${i * 0.06}s` }}>
+          <div className="ins-skeleton" style={{ height: 3 }} />
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="ins-skeleton" style={{ width: 40, height: 10 }} />
+              <div className="ins-skeleton" style={{ width: 60, height: 18, borderRadius: 999 }} />
+            </div>
+            <div className="ins-skeleton" style={{ width: '70%', height: 14 }} />
+            <div className="ins-skeleton" style={{ height: 70, borderRadius: 10 }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="ins-skeleton" style={{ width: 60, height: 18, borderRadius: 999 }} />
+              <div className="ins-skeleton" style={{ width: 50, height: 24, borderRadius: 8 }} />
+            </div>
+          </div>
         </div>
       ))}
     </div>
+  )
+}
+
+function SkeletonCards({ n = 4 }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {[...Array(n)].map((_, i) => (
+        <div key={i} style={{ background: '#fff', border: '1px solid #F1F5F9', borderRadius: 12, padding: '16px 18px', display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div className="ins-skeleton" style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="ins-skeleton" style={{ width: '50%', height: 12 }} />
+            <div className="ins-skeleton" style={{ width: '30%', height: 10 }} />
+          </div>
+          <div className="ins-skeleton" style={{ width: 80, height: 20 }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ArrowRight() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 12h14M12 5l7 7-7 7" />
+    </svg>
   )
 }
 
@@ -1110,5 +1543,3 @@ function formatFecha(ts) {
     hour: '2-digit', minute: '2-digit'
   })
 }
-
-const INPUT_CLS = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white'

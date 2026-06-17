@@ -3,7 +3,8 @@ import {
   FileText, Filter, Download, Printer, Search,
   ChevronUp, ChevronDown, ChevronsLeft, ChevronsRight,
   ChevronLeft, ChevronRight, X, RefreshCw, FileSpreadsheet,
-  ClipboardList, BarChart2, Package, Truck, DollarSign, Calendar
+  ClipboardList, BarChart2, Package, Truck, DollarSign, Calendar,
+  AlertTriangle
 } from 'lucide-react'
 import api from '../../services/api'
 
@@ -171,35 +172,36 @@ const formatValue = (value, format) => {
   }
 }
 
-const BADGE_STYLES = {
-  EN_CURSO: 'bg-blue-100 text-blue-700',
-  COSECHADO: 'bg-green-100 text-green-700',
-  PERDIDO: 'bg-red-100 text-red-700',
-  DISPONIBLE: 'bg-teal-100 text-teal-700',
-  DESPACHADO: 'bg-gray-100 text-gray-600',
-  PREPARADO: 'bg-yellow-100 text-yellow-700',
-  EN_CAMINO: 'bg-blue-100 text-blue-700',
-  ENTREGADO: 'bg-green-100 text-green-700',
-  PENDIENTE: 'bg-orange-100 text-orange-700',
-  PAGADO: 'bg-green-100 text-green-700',
-  CONFIRMADO: 'bg-teal-100 text-teal-700',
-  REALIZADO: 'bg-green-100 text-green-700',
-  CANCELADO: 'bg-red-100 text-red-700',
-  EMERGENCIA: 'bg-red-100 text-red-700',
-  NORMAL: 'bg-gray-100 text-gray-600',
-  CLIENTE: 'bg-violet-100 text-violet-700',
-  PUNTO_VENTA: 'bg-cyan-100 text-cyan-700',
-  Y: 'bg-green-100 text-green-700',
-  N: 'bg-red-100 text-red-700',
+const BADGE_STYLE = {
+  EN_CURSO:    { background: '#DBEAFE', color: '#1E40AF' },
+  COSECHADO:   { background: '#D1FAE5', color: '#065F46' },
+  PERDIDO:     { background: '#FEE2E2', color: '#991B1B' },
+  DISPONIBLE:  { background: '#CCFBF1', color: '#0F766E' },
+  DESPACHADO:  { background: '#F1F5F9', color: '#475569' },
+  PREPARADO:   { background: '#FEF3C7', color: '#92400E' },
+  EN_CAMINO:   { background: '#DBEAFE', color: '#1E40AF' },
+  ENTREGADO:   { background: '#D1FAE5', color: '#065F46' },
+  PENDIENTE:   { background: '#FFEDD5', color: '#9A3412' },
+  PAGADO:      { background: '#D1FAE5', color: '#065F46' },
+  CONFIRMADO:  { background: '#CCFBF1', color: '#0F766E' },
+  REALIZADO:   { background: '#D1FAE5', color: '#065F46' },
+  CANCELADO:   { background: '#FEE2E2', color: '#991B1B' },
+  EMERGENCIA:  { background: '#FEE2E2', color: '#991B1B' },
+  NORMAL:      { background: '#F1F5F9', color: '#475569' },
+  CLIENTE:     { background: '#F3E8FF', color: '#6B21A8' },
+  PUNTO_VENTA: { background: '#CFFAFE', color: '#164E63' },
+  Y:           { background: '#D1FAE5', color: '#065F46' },
+  N:           { background: '#FEE2E2', color: '#991B1B' },
 }
 
+// Color del módulo → tokens del design system
 const COLOR_MAP = {
-  teal: { tab: 'bg-teal-600', badge: 'bg-teal-50 text-teal-700 border-teal-200', icon: 'text-teal-600' },
-  blue: { tab: 'bg-blue-600', badge: 'bg-blue-50 text-blue-700 border-blue-200', icon: 'text-blue-600' },
-  cyan: { tab: 'bg-cyan-600', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200', icon: 'text-cyan-600' },
-  violet: { tab: 'bg-violet-600', badge: 'bg-violet-50 text-violet-700 border-violet-200', icon: 'text-violet-600' },
-  emerald: { tab: 'bg-emerald-600', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'text-emerald-600' },
-  amber: { tab: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'text-amber-600' },
+  teal:    { grad: 'linear-gradient(135deg, #14B8A6, #06B6D4)', bg: '#F0FDFA', color: '#0F766E', border: '#CCFBF1', solid: '#14B8A6' },
+  blue:    { grad: 'linear-gradient(135deg, #3B82F6, #6366F1)', bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE', solid: '#3B82F6' },
+  cyan:    { grad: 'linear-gradient(135deg, #06B6D4, #0EA5E9)', bg: '#ECFEFF', color: '#155E75', border: '#A5F3FC', solid: '#06B6D4' },
+  violet:  { grad: 'linear-gradient(135deg, #8B5CF6, #A855F7)', bg: '#F5F3FF', color: '#6D28D9', border: '#DDD6FE', solid: '#8B5CF6' },
+  emerald: { grad: 'linear-gradient(135deg, #10B981, #059669)', bg: '#F0FDF4', color: '#065F46', border: '#A7F3D0', solid: '#10B981' },
+  amber:   { grad: 'linear-gradient(135deg, #F59E0B, #EF4444)', bg: '#FFFBEB', color: '#92400E', border: '#FED7AA', solid: '#F59E0B' },
 }
 
 // ─── EXPORT HELPERS ──────────────────────────────────────────────────────────
@@ -258,6 +260,18 @@ const exportPrint = (datos, columnas, nombreReporte, filtrosActivos) => {
   w.document.close()
   w.print()
 }
+
+// ─── ANIMACIONES GLOBALES ────────────────────────────────────────────────────
+const GLOBAL_STYLES = `
+@keyframes rep-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rep-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+`
 
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
 
@@ -367,22 +381,50 @@ function Reportes() {
     : null
 
   return (
-    <div className="space-y-5">
+    <div style={{ background: '#F8FAFC', minHeight: '100vh', padding: '24px' }}>
+      <style>{GLOBAL_STYLES}</style>
 
-      {/* Encabezado */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Reportes</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Consulta, filtra y exporta información operativa de ASOPISTAR.</p>
+      {/* ── Hero Header ─────────────────────────────────────────── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #F0FDFA, #F8FAFC, #EFF6FF)',
+        border: '1px solid #E2E8F0', borderRadius: 16,
+        padding: '24px 28px', marginBottom: 24,
+        position: 'relative', overflow: 'hidden',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 16
+      }}>
+        <div style={{ position: 'absolute', top: -20, right: 80, width: 100, height: 100, borderRadius: '50%', background: 'rgba(20,184,166,0.07)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: 10, right: 30, width: 60, height: 60, borderRadius: '50%', background: 'rgba(6,182,212,0.06)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -15, right: 140, width: 80, height: 80, borderRadius: '50%', background: 'rgba(20,184,166,0.05)', pointerEvents: 'none' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+            background: 'linear-gradient(135deg, #14B8A6, #06B6D4)',
+            boxShadow: '0 4px 14px rgba(20,184,166,0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <FileText size={24} color="#fff" aria-hidden />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: 0 }}>Reportes</h1>
+            <p style={{ fontSize: 13, color: '#64748B', margin: '2px 0 0' }}>
+              Consulta, filtra y exporta información operativa de ASOPISTAR
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          <FileText size={14} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#94A3B8' }}>
+          <Calendar size={13} aria-hidden />
           <span>{new Date().toLocaleDateString('es-CO', { dateStyle: 'long' })}</span>
         </div>
       </div>
 
-      {/* Selector de reporte — tabs horizontales */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1.5 flex flex-wrap gap-1">
+      {/* ── Tabs de reportes ────────────────────────────────────── */}
+      <div style={{
+        background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14,
+        padding: 8, marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 6
+      }}>
         {Object.entries(reportesVisibles).map(([key, cfg]) => {
           const Icon = cfg.icon
           const cols = COLOR_MAP[cfg.color]
@@ -391,40 +433,67 @@ function Reportes() {
             <button
               key={key}
               onClick={() => cambiarReporte(key)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activo
-                  ? `${cols.tab} text-white shadow-sm`
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-              }`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 16px', borderRadius: 10,
+                fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                background: activo ? cols.grad : 'transparent',
+                color: activo ? '#fff' : '#64748B',
+                boxShadow: activo ? `0 4px 12px ${cols.solid}40` : 'none',
+              }}
+              onMouseEnter={e => { if (!activo) e.currentTarget.style.background = '#F8FAFC' }}
+              onMouseLeave={e => { if (!activo) e.currentTarget.style.background = 'transparent' }}
             >
-              <Icon size={15} />
+              <Icon size={15} aria-hidden />
               {cfg.label}
             </button>
           )
         })}
       </div>
 
-      {/* Panel de filtros */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter size={15} className={colors.icon} />
-          <span className="text-sm font-semibold text-gray-700">Filtros</span>
+      {/* ── Panel de filtros ────────────────────────────────────── */}
+      <div style={{
+        background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14,
+        padding: '20px 22px', marginBottom: 20
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <Filter size={15} color={colors.solid} aria-hidden />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>Filtros</span>
           {Object.values(filtros).some(v => v) && (
-            <button onClick={limpiarFiltros} className="ml-auto flex items-center gap-1 text-xs text-gray-400 hover:text-red-500">
-              <X size={13} /> Limpiar filtros
+            <button
+              onClick={limpiarFiltros}
+              style={{
+                marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
+                fontSize: 12, color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer',
+                transition: 'color 0.2s ease'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#EF4444' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#94A3B8' }}
+            >
+              <X size={13} aria-hidden /> Limpiar filtros
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
           {config.filtros.map(f => (
             <div key={f.key}>
-              <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                {f.label}
+              </label>
               {f.type === 'select' ? (
                 <select
                   value={filtros[f.key] || ''}
                   onChange={e => setFiltros(p => ({ ...p, [f.key]: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  style={{
+                    width: '100%', padding: '9px 12px', boxSizing: 'border-box',
+                    border: '1.5px solid #E2E8F0', borderRadius: 9, background: '#FAFAFA',
+                    fontSize: 13, color: '#0F172A', outline: 'none', cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#14B8A6'; e.target.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.12)' }}
+                  onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none' }}
                 >
                   <option value="">Todos</option>
                   {f.options.map(o => <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>)}
@@ -435,36 +504,67 @@ function Reportes() {
                   value={filtros[f.key] || ''}
                   onChange={e => setFiltros(p => ({ ...p, [f.key]: e.target.value }))}
                   placeholder={f.placeholder || ''}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  style={{
+                    width: '100%', padding: '9px 12px', boxSizing: 'border-box',
+                    border: '1.5px solid #E2E8F0', borderRadius: 9, background: '#FAFAFA',
+                    fontSize: 13, color: '#0F172A', outline: 'none', transition: 'all 0.2s ease'
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#14B8A6'; e.target.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.12)' }}
+                  onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none' }}
                 />
               )}
             </div>
           ))}
         </div>
 
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginTop: 18, paddingTop: 16, borderTop: '1px solid #F1F5F9', flexWrap: 'wrap', gap: 12
+        }}>
           <button
             onClick={consultar}
             disabled={loading}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all ${colors.tab} hover:opacity-90 disabled:opacity-60`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 22px', borderRadius: 10, border: 'none',
+              fontSize: 13, fontWeight: 700, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer',
+              background: colors.grad, opacity: loading ? 0.7 : 1,
+              boxShadow: `0 4px 12px ${colors.solid}40`, transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = 'translateY(-2px)' } }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
           >
-            {loading ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
+            {loading ? <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} aria-hidden /> : <Search size={15} aria-hidden />}
             {loading ? 'Consultando...' : 'Consultar'}
           </button>
 
           {consultado && datos.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 onClick={() => exportCSV(datosFiltrados, config.columnas, config.label)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 14px', borderRadius: 9, fontSize: 12, fontWeight: 600,
+                  border: '1.5px solid #E2E8F0', background: '#FAFAFA', color: '#64748B',
+                  cursor: 'pointer', transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#14B8A6'; e.currentTarget.style.color = '#14B8A6' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B' }}
               >
-                <FileSpreadsheet size={14} /> CSV
+                <FileSpreadsheet size={14} aria-hidden /> CSV
               </button>
               <button
                 onClick={() => exportPrint(datosFiltrados, config.columnas, config.label, filtros)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 14px', borderRadius: 9, fontSize: 12, fontWeight: 600,
+                  border: '1.5px solid #E2E8F0', background: '#FAFAFA', color: '#64748B',
+                  cursor: 'pointer', transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#14B8A6'; e.currentTarget.style.color = '#14B8A6' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B' }}
               >
-                <Printer size={14} /> Imprimir
+                <Printer size={14} aria-hidden /> Imprimir
               </button>
             </div>
           )}
@@ -473,33 +573,71 @@ function Reportes() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 flex items-center gap-2">
-          <X size={16} /> {error}
+        <div style={{
+          background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 14,
+          padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20
+        }}>
+          <AlertTriangle size={17} color="#EF4444" aria-hidden />
+          <span style={{ fontSize: 13, color: '#991B1B' }}>{error}</span>
         </div>
       )}
 
       {/* Estado vacío antes de consultar */}
       {!consultado && !loading && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 flex flex-col items-center justify-center gap-3 text-gray-400">
-          <FileText size={40} strokeWidth={1.2} />
-          <p className="text-sm font-medium">Aplica filtros y pulsa <span className="font-semibold text-gray-600">Consultar</span> para generar el reporte</p>
+        <div style={{
+          background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14,
+          padding: '64px 24px', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 14, textAlign: 'center'
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 16,
+            background: 'linear-gradient(135deg, #CCFBF1, #A5F3FC)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <FileText size={28} color="#14B8A6" aria-hidden />
+          </div>
+          <p style={{ fontSize: 14, color: '#64748B', margin: 0, maxWidth: 360 }}>
+            Aplica filtros y pulsa <span style={{ fontWeight: 700, color: '#0F172A' }}>Consultar</span> para generar el reporte
+          </p>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div style={{ background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F1F5F9' }}>
+            <div style={{ height: 14, width: 140, background: '#F1F5F9', borderRadius: 6, animation: 'rep-pulse 1.4s ease infinite' }} />
+          </div>
+          {[...Array(6)].map((_, i) => (
+            <div key={i} style={{ padding: '14px 20px', borderBottom: '1px solid #F8FAFC', display: 'flex', gap: 16 }}>
+              {[...Array(5)].map((_, j) => (
+                <div key={j} style={{ height: 12, flex: 1, background: '#F1F5F9', borderRadius: 6, animation: 'rep-pulse 1.4s ease infinite', animationDelay: `${(i + j) * 0.04}s` }} />
+              ))}
+            </div>
+          ))}
         </div>
       )}
 
       {/* Tabla de resultados */}
       {consultado && !loading && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div style={{ background: '#fff', border: '1px solid #F1F5F9', borderRadius: 14, overflow: 'hidden' }}>
 
           {/* Barra superior de tabla */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${colors.badge}`}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 20px', borderBottom: '1px solid #F1F5F9', flexWrap: 'wrap', gap: 12
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 99,
+                background: colors.bg, color: colors.color, border: `1px solid ${colors.border}`
+              }}>
                 {datosFiltrados.length} registros
               </span>
               {total !== null && (
-                <span className="text-xs text-gray-500">
+                <span style={{ fontSize: 12, color: '#64748B' }}>
                   {config.totalLabel}:
-                  <span className="font-semibold text-gray-800 ml-1">
+                  <span style={{ fontWeight: 700, color: '#0F172A', marginLeft: 4 }}>
                     {config.totalFormat === 'currency'
                       ? `$${total.toLocaleString('es-CO')}`
                       : total.toLocaleString('es-CO')}
@@ -509,63 +647,90 @@ function Reportes() {
             </div>
 
             {/* Búsqueda rápida */}
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <div style={{ position: 'relative' }}>
+              <Search size={13} color="#94A3B8" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }} aria-hidden />
               <input
                 type="text"
                 value={busqueda}
                 onChange={e => { setBusqueda(e.target.value); setPagina(1) }}
                 placeholder="Buscar en resultados..."
-                className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 w-52"
+                style={{
+                  paddingLeft: 30, paddingRight: 12, paddingTop: 7, paddingBottom: 7,
+                  fontSize: 12, border: '1.5px solid #E2E8F0', borderRadius: 9,
+                  background: '#FAFAFA', outline: 'none', width: 208, boxSizing: 'border-box',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={e => { e.target.style.borderColor = '#14B8A6'; e.target.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.12)' }}
+                onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none' }}
               />
             </div>
           </div>
 
           {/* Tabla */}
-          <div className="overflow-x-auto">
+          <div style={{ overflowX: 'auto' }}>
             {datosPagina.length === 0 ? (
-              <div className="py-16 flex flex-col items-center justify-center text-gray-400 gap-2">
-                <FileText size={32} strokeWidth={1.2} />
-                <p className="text-sm">Sin resultados para los filtros aplicados</p>
+              <div style={{
+                padding: '60px 24px', display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 10
+              }}>
+                <FileText size={30} color="#CBD5E1" aria-hidden />
+                <p style={{ fontSize: 13, color: '#94A3B8', margin: 0 }}>Sin resultados para los filtros aplicados</p>
               </div>
             ) : (
-              <table className="w-full text-sm">
+              <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr className="bg-gray-50">
+                  <tr style={{ background: '#FAFBFC' }}>
                     {config.columnas.map(col => (
                       <th
                         key={col.key}
                         onClick={() => col.sortable && toggleOrden(col.key)}
-                        className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap
-                          ${col.sortable ? 'cursor-pointer hover:text-gray-800 select-none' : ''}`}
+                        style={{
+                          padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                          color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em',
+                          whiteSpace: 'nowrap', cursor: col.sortable ? 'pointer' : 'default',
+                          userSelect: 'none', borderBottom: '1px solid #F1F5F9'
+                        }}
                       >
-                        <div className="flex items-center gap-1">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           {col.label}
                           {col.sortable && ordenCol === col.key && (
-                            ordenDir === 'asc' ? <ChevronUp size={13} /> : <ChevronDown size={13} />
+                            ordenDir === 'asc' ? <ChevronUp size={13} aria-hidden /> : <ChevronDown size={13} aria-hidden />
                           )}
                         </div>
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody>
                   {datosPagina.map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={i}
+                      style={{ borderBottom: '1px solid #F8FAFC', transition: 'background 0.15s ease' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#FAFBFC' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    >
                       {config.columnas.map(col => {
                         const val = row[col.key]
                         if (col.format === 'badge') {
                           const label = val === 'Y' ? 'Sí' : val === 'N' ? 'No' : (val || '—').toString().replace(/_/g, ' ')
+                          const bs = BADGE_STYLE[val] || { background: '#F1F5F9', color: '#475569' }
                           return (
-                            <td key={col.key} className="px-4 py-3">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${BADGE_STYLES[val] || 'bg-gray-100 text-gray-600'}`}>
+                            <td key={col.key} style={{ padding: '11px 16px' }}>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center',
+                                padding: '3px 10px', borderRadius: 99,
+                                fontSize: 11, fontWeight: 700, ...bs
+                              }}>
                                 {label}
                               </span>
                             </td>
                           )
                         }
                         return (
-                          <td key={col.key} className="px-4 py-3 text-gray-700 whitespace-nowrap max-w-xs truncate">
+                          <td key={col.key} style={{
+                            padding: '11px 16px', color: '#334155', whiteSpace: 'nowrap',
+                            maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis'
+                          }}>
                             {formatValue(val, col.format)}
                           </td>
                         )
@@ -579,30 +744,39 @@ function Reportes() {
 
           {/* Paginación */}
           {totalPaginas > 1 && (
-            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
-              <span className="text-xs text-gray-400">
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 20px', borderTop: '1px solid #F1F5F9', flexWrap: 'wrap', gap: 10
+            }}>
+              <span style={{ fontSize: 12, color: '#94A3B8' }}>
                 Página {pagina} de {totalPaginas}
               </span>
-              <div className="flex items-center gap-1">
-                <PagBtn onClick={() => setPagina(1)} disabled={pagina === 1}><ChevronsLeft size={14} /></PagBtn>
-                <PagBtn onClick={() => setPagina(p => p - 1)} disabled={pagina === 1}><ChevronLeft size={14} /></PagBtn>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <PagBtn onClick={() => setPagina(1)} disabled={pagina === 1}><ChevronsLeft size={14} aria-hidden /></PagBtn>
+                <PagBtn onClick={() => setPagina(p => p - 1)} disabled={pagina === 1}><ChevronLeft size={14} aria-hidden /></PagBtn>
                 {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
                   const start = Math.max(1, Math.min(pagina - 2, totalPaginas - 4))
                   const p = start + i
+                  const activo = p === pagina
                   return (
                     <button
                       key={p}
                       onClick={() => setPagina(p)}
-                      className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
-                        p === pagina ? 'bg-teal-600 text-white' : 'text-gray-500 hover:bg-gray-100'
-                      }`}
+                      style={{
+                        width: 28, height: 28, borderRadius: 8, fontSize: 12, fontWeight: 700,
+                        border: 'none', cursor: 'pointer', transition: 'all 0.2s ease',
+                        background: activo ? colors.grad : 'transparent',
+                        color: activo ? '#fff' : '#64748B'
+                      }}
+                      onMouseEnter={e => { if (!activo) e.currentTarget.style.background = '#F1F5F9' }}
+                      onMouseLeave={e => { if (!activo) e.currentTarget.style.background = 'transparent' }}
                     >
                       {p}
                     </button>
                   )
                 })}
-                <PagBtn onClick={() => setPagina(p => p + 1)} disabled={pagina === totalPaginas}><ChevronRight size={14} /></PagBtn>
-                <PagBtn onClick={() => setPagina(totalPaginas)} disabled={pagina === totalPaginas}><ChevronsRight size={14} /></PagBtn>
+                <PagBtn onClick={() => setPagina(p => p + 1)} disabled={pagina === totalPaginas}><ChevronRight size={14} aria-hidden /></PagBtn>
+                <PagBtn onClick={() => setPagina(totalPaginas)} disabled={pagina === totalPaginas}><ChevronsRight size={14} aria-hidden /></PagBtn>
               </div>
             </div>
           )}
@@ -614,11 +788,20 @@ function Reportes() {
 
 // Mini botón de paginación
 function PagBtn({ children, onClick, disabled }) {
+  const [hov, setHov] = useState(false)
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className="w-7 h-7 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      style={{
+        width: 28, height: 28, borderRadius: 8, border: 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#64748B', background: hov && !disabled ? '#F1F5F9' : 'transparent',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.35 : 1, transition: 'all 0.2s ease'
+      }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
     >
       {children}
     </button>
