@@ -70,7 +70,7 @@ export default function AccessibilityWidget() {
       <div
         ref={panelRef}
         id="a11y-widget"
-        className="fixed bottom-6 left-4 z-[9999] flex flex-col items-start gap-2"
+        className="fixed bottom-6 right-4 z-[9999] flex flex-col items-end gap-2"
         style={{ fontFamily: 'system-ui, sans-serif' }}
       >
         {abierto && (
